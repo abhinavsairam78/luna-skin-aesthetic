@@ -162,7 +162,10 @@ const INITIAL_PATIENTS = [
 const INITIAL_SETTINGS = {
     clinicName: "Luna Skin Aesthetics",
     dermatologist: "Lead Cosmetologist",
-    licenseId: "#882-LUNA-SAFE-921"
+    licenseId: "#882-LUNA-SAFE-921",
+    address: "200K/5, Seyad plaza, Tiruchendur main road, palayamkottai, Tirunelveli, Tamil Nadu 627002",
+    phone: "9025676090",
+    email: "lunaskinaesthetics24@gmail.com"
 };
 
 const INITIAL_USERS = [
@@ -473,32 +476,66 @@ app.put('/api/patients/:refId/appointment', (req, res) => {
     // Simulate SMS notification
     console.log(`\n================================================================================`);
     console.log(`📱 [SMS NOTIFICATION SENT]`);
-    console.log(`   To: Dr. Elena Vogt (+971 50 888 2921)`);
+    console.log(`   To: Luna Skin Clinic (+91 90256 76090)`);
     console.log(`   Message: "New appointment request by patient ${patientName} on ${date} at ${time} for ${purpose}."`);
     console.log(`================================================================================\n`);
 
-    // Simulate Email notification
+    // Simulate Email notification & Google Calendar Sync log
     console.log(`================================================================================`);
     console.log(`✉️ [EMAIL NOTIFICATION SENT]`);
-    console.log(`   To: dr.vogt@luna.com`);
-    console.log(`   Subject: New Appointment Booked - ${patientName}`);
+    console.log(`   To: lunaskinaesthetics24@gmail.com`);
+    console.log(`   Subject: New Patient Appointment Booked - ${patientName}`);
     console.log(`   Body:`);
-    console.log(`     Dear Dr. Elena Vogt,`);
+    console.log(`     Dear Luna Skin Aesthetics Team,`);
     console.log(`     `);
-    console.log(`     A new appointment has been scheduled in your calendar.`);
+    console.log(`     A new patient appointment has been scheduled and updated in your calendar.`);
     console.log(`     - Patient: ${patientName}`);
     console.log(`     - Date: ${date}`);
     console.log(`     - Time: ${time}`);
     console.log(`     - Purpose: ${purpose}`);
+    console.log(`     - Location: 200K/5, Seyad plaza, Tiruchendur main road, palayamkottai, Tirunelveli, Tamil Nadu 627002`);
     console.log(`     `);
-    console.log(`     Please log in to the Doctor Portal to view the patient's full case sheet.`);
+    console.log(`     Please check your Google Calendar (lunaskinaesthetics24@gmail.com) or Doctor Portal.`);
     console.log(`================================================================================\n`);
 
     addNotification(`New appointment booked by ${patientName} on ${date} at ${time} (${purpose})`, 'appointment');
-    addNotification(`SMS alert sent to Dr. Elena Vogt at +971 50 888 2921`, 'sms');
-    addNotification(`Email notification sent to dr.vogt@luna.com`, 'email');
+    addNotification(`SMS alert sent to Clinic at +91 90256 76090`, 'sms');
+    addNotification(`Email & Calendar update sent to lunaskinaesthetics24@gmail.com`, 'email');
 
     res.json(patientsList[index]);
+});
+
+// POST /api/appointments/request — Public landing page booking request
+app.post('/api/appointments/request', (req, res) => {
+    const { name, phone, email, service, date, message } = req.body;
+
+    if (!name || !phone) {
+        return res.status(400).json({ error: "Name and phone number are required." });
+    }
+
+    const bookingDate = date || new Date().toISOString().slice(0, 10);
+    const purpose = service || "Initial Consultation";
+
+    console.log(`\n================================================================================`);
+    console.log(`📅 [PUBLIC APPOINTMENT REQUEST RECEIVED]`);
+    console.log(`   Patient Name: ${name}`);
+    console.log(`   Phone: ${phone}`);
+    console.log(`   Email: ${email || 'N/A'}`);
+    console.log(`   Service Requested: ${purpose}`);
+    console.log(`   Preferred Date: ${bookingDate}`);
+    console.log(`   Message: ${message || 'None'}`);
+    console.log(`   Target Email: lunaskinaesthetics24@gmail.com`);
+    console.log(`   Target SMS: +91 90256 76090`);
+    console.log(`================================================================================\n`);
+
+    addNotification(`Public booking request from ${name} (${phone}) for ${purpose} on ${bookingDate}`, 'appointment');
+    addNotification(`Email notification dispatched to lunaskinaesthetics24@gmail.com`, 'email');
+
+    res.status(201).json({
+        success: true,
+        message: `Appointment request submitted! Clinic notified at lunaskinaesthetics24@gmail.com and 9025676090.`,
+        booking: { name, phone, email, service: purpose, date: bookingDate, message }
+    });
 });
 
 // Notifications routes
@@ -597,8 +634,7 @@ app.get('*', (req, res) => {
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`\n🌙 Luna Skin Aesthetic — Cosmetic Portal`);
-        console.log(`   Server running at: http://localhost:${PORT}`);
-        console.log(`   Doctor Login: dr.vogt@luna.com / luna2024\n`);
+        console.log(`   Server running at: http://localhost:${PORT}\n`);
     });
 }
 

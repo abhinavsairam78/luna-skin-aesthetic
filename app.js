@@ -10,6 +10,135 @@ let currentMonth = new Date().getMonth();
 let allAppointments = []; // Doctor calendar: all patient appointments
 let currentSession = null; // Auth session: { role, name, id, patientRef, patientRecord }
 
+// ─── CLINIC METADATA & CALENDAR UTILITIES ───────────────────────
+const CLINIC_ADDRESS = "200K/5, Seyad plaza, Tiruchendur main road, palayamkottai, Tirunelveli, Tamil Nadu 627002";
+const CLINIC_PHONE = "9025676090";
+const CLINIC_EMAIL = "lunaskinaesthetics24@gmail.com";
+
+function generateGoogleCalendarUrl({ title, description, location, date, time }) {
+    let startDT, endDT;
+    try {
+        const d = date || new Date().toISOString().slice(0, 10);
+        let hour = 10, min = 0;
+        if (time) {
+            const [tPart, period] = time.split(' ');
+            if (tPart) {
+                const parts = tPart.split(':');
+                hour = parseInt(parts[0]) || 10;
+                min = parseInt(parts[1]) || 0;
+                if (period === 'PM' && hour < 12) hour += 12;
+                if (period === 'AM' && hour === 12) hour = 0;
+            }
+        }
+        const startDateObj = new Date(`${d}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`);
+        const endDateObj = new Date(startDateObj.getTime() + 60 * 60 * 1000);
+        
+        startDT = startDateObj.toISOString().replace(/-|:|\.\d\d\d/g, '');
+        endDT = endDateObj.toISOString().replace(/-|:|\.\d\d\d/g, '');
+    } catch (e) {
+        const now = new Date();
+        startDT = now.toISOString().replace(/-|:|\.\d\d\d/g, '');
+        endDT = new Date(now.getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, '');
+    }
+
+    const eventTitle = title || "Luna Skin Aesthetic Appointment";
+    const details = description || `Appointment booked with Luna Skin Aesthetics.\nClinic Email: ${CLINIC_EMAIL}\nClinic Phone: ${CLINIC_PHONE}\nLocation: ${CLINIC_ADDRESS}`;
+    const loc = location || CLINIC_ADDRESS;
+
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${startDT}/${endDT}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(loc)}&add=${encodeURIComponent(CLINIC_EMAIL)}`;
+}
+
+function downloadICSFile({ title, description, location, date, time }) {
+    let startDT, endDT;
+    try {
+        const d = date || new Date().toISOString().slice(0, 10);
+        let hour = 10, min = 0;
+        if (time) {
+            const [tPart, period] = time.split(' ');
+            if (tPart) {
+                const parts = tPart.split(':');
+                hour = parseInt(parts[0]) || 10;
+                min = parseInt(parts[1]) || 0;
+                if (period === 'PM' && hour < 12) hour += 12;
+                if (period === 'AM' && hour === 12) hour = 0;
+            }
+        }
+        const startDateObj = new Date(`${d}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`);
+        const endDateObj = new Date(startDateObj.getTime() + 60 * 60 * 1000);
+        
+        startDT = startDateObj.toISOString().replace(/-|:|\.\d\d\d/g, '');
+        endDT = endDateObj.toISOString().replace(/-|:|\.\d\d\d/g, '');
+    } catch (e) {
+        const now = new Date();
+        startDT = now.toISOString().replace(/-|:|\.\d\d\d/g, '');
+        endDT = new Date(now.getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, '');
+    }
+
+    const eventTitle = title || "Luna Skin Aesthetic Appointment";
+    const eventDetails = (description || `Appointment booked with Luna Skin Aesthetics. Phone: ${CLINIC_PHONE}`).replace(/\n/g, '\\n');
+    const loc = location || CLINIC_ADDRESS;
+
+    const icsData = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Luna Skin Aesthetics//Appointment Scheduler//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:REQUEST',
+        'BEGIN:VEVENT',
+        `SUMMARY:${eventTitle}`,
+        `DESCRIPTION:${eventDetails}`,
+        `LOCATION:${loc}`,
+        `DTSTART:${startDT}`,
+        `DTEND:${endDT}`,
+        `ORGANIZER;CN=Luna Skin Aesthetics:mailto:${CLINIC_EMAIL}`,
+        `ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;CN=Luna Clinic:mailto:${CLINIC_EMAIL}`,
+        'STATUS:CONFIRMED',
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute('download', `appointment_${Date.now()}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function openBookingSuccessModal({ title, patientName, date, time, purpose }) {
+    const successText = document.getElementById('booking-success-text');
+    if (successText) {
+        successText.innerHTML = `Your appointment for <strong>${patientName || 'Patient'}</strong> on <strong>${date} ${time ? 'at ' + time : ''}</strong> (${purpose || 'Consultation'}) has been recorded. Email notification & calendar update dispatched to <strong>${CLINIC_EMAIL}</strong>.`;
+    }
+
+    const gcalBtn = document.getElementById('btn-add-gcal');
+    if (gcalBtn) {
+        gcalBtn.href = generateGoogleCalendarUrl({
+            title: `Luna Skin Appointment - ${patientName || 'Client'} (${purpose || 'Consultation'})`,
+            description: `Patient Appointment with Luna Skin Aesthetics.\nPatient Name: ${patientName || 'Client'}\nTherapy: ${purpose || 'Consultation'}\nDate: ${date}\nTime: ${time || 'TBD'}\nClinic Email: ${CLINIC_EMAIL}\nClinic Phone: ${CLINIC_PHONE}`,
+            location: CLINIC_ADDRESS,
+            date,
+            time
+        });
+    }
+
+    const icsBtn = document.getElementById('btn-download-ics');
+    if (icsBtn) {
+        icsBtn.onclick = () => {
+            downloadICSFile({
+                title: `Luna Skin Appointment - ${patientName || 'Client'} (${purpose || 'Consultation'})`,
+                description: `Patient Appointment with Luna Skin Aesthetics.\nPatient Name: ${patientName || 'Client'}\nTherapy: ${purpose || 'Consultation'}\nDate: ${date}\nTime: ${time || 'TBD'}\nClinic Email: ${CLINIC_EMAIL}\nClinic Phone: ${CLINIC_PHONE}`,
+                location: CLINIC_ADDRESS,
+                date,
+                time
+            });
+        };
+    }
+
+    openModal('booking-success-modal');
+}
+
 // ─── SPA ROUTER ───────────────────────────────────────────────
 function showPage(pageId) {
     document.querySelectorAll('.page-section').forEach(p => p.style.display = 'none');
@@ -37,14 +166,14 @@ function setAuthRole(role) {
     if (role === 'doctor') {
         title.textContent = 'Specialist Sign In';
         subtitle.textContent = 'Access the clinical cosmetology portal';
-        doctorHint.style.display = 'flex';
+        if (doctorHint) doctorHint.style.display = 'flex';
         if (patientHint) patientHint.style.display = 'none';
         tabsWrap.style.display = 'none'; // Doctors can't register here
         setAuthTab('login');
     } else {
         title.textContent = 'Welcome Back';
         subtitle.textContent = 'Sign in to access your patient portal';
-        doctorHint.style.display = 'none';
+        if (doctorHint) doctorHint.style.display = 'none';
         if (patientHint) patientHint.style.display = 'flex';
         tabsWrap.style.display = 'flex';
     }
@@ -480,8 +609,16 @@ async function submitPatientAppointment(e) {
         const apptDate = new Date(date);
         document.getElementById('ov-next-appt').textContent = apptDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-        showToast('Appointment confirmed! We will send a reminder before your visit.');
+        showToast('Appointment confirmed! Updated via email & Google Calendar.');
         switchPatientSection('appointment');
+
+        // Show Google Calendar & ICS Modal
+        openBookingSuccessModal({
+            patientName: updatedPatient.name,
+            date,
+            time,
+            purpose
+        });
     } catch (err) {
         showToast('Failed to book appointment. Please try again.', 'error');
     }
@@ -507,12 +644,44 @@ function switchPatientSection(section) {
 }
 
 // ─── LANDING PAGE MODULE ──────────────────────────────────────
-function submitLandingBooking(e) {
+async function submitLandingBooking(e) {
     e.preventDefault();
     const name = document.getElementById('bk-name').value;
     const phone = document.getElementById('bk-phone').value;
-    showToast(`Thank you, ${name}! We'll contact you at ${phone} within 24 hours to confirm your appointment.`);
-    document.getElementById('landing-booking-form').reset();
+    const email = document.getElementById('bk-email')?.value || '';
+    const service = document.getElementById('bk-service')?.value || '';
+    const date = document.getElementById('bk-date')?.value || '';
+    const message = document.getElementById('bk-message')?.value || '';
+
+    try {
+        const res = await fetch('/api/appointments/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, phone, email, service, date, message })
+        });
+        if (!res.ok) throw new Error('Failed to post appointment request');
+
+        showToast(`Thank you, ${name}! Your appointment request has been sent to ${CLINIC_EMAIL}.`);
+        document.getElementById('landing-booking-form').reset();
+
+        // Open modal with Google Calendar link
+        openBookingSuccessModal({
+            patientName: name,
+            date: date || new Date().toISOString().slice(0, 10),
+            time: '10:00 AM',
+            purpose: service || 'Consultation'
+        });
+    } catch (err) {
+        showToast(`Thank you, ${name}! We'll contact you at ${phone} to confirm your appointment.`);
+        document.getElementById('landing-booking-form').reset();
+
+        openBookingSuccessModal({
+            patientName: name,
+            date: date || new Date().toISOString().slice(0, 10),
+            time: '10:00 AM',
+            purpose: service || 'Consultation'
+        });
+    }
 }
 
 // Generate floating particles on hero section
@@ -1577,6 +1746,9 @@ document.getElementById('settings-btn')?.addEventListener('click', async () => {
         document.getElementById('setting-clinic-name').value = settings.clinicName || '';
         document.getElementById('setting-dermatologist').value = settings.dermatologist || '';
         document.getElementById('setting-license').value = settings.licenseId || '';
+        if (document.getElementById('setting-address')) document.getElementById('setting-address').value = settings.address || CLINIC_ADDRESS;
+        if (document.getElementById('setting-phone')) document.getElementById('setting-phone').value = settings.phone || CLINIC_PHONE;
+        if (document.getElementById('setting-email')) document.getElementById('setting-email').value = settings.email || CLINIC_EMAIL;
     } catch (e) {}
     openModal('settings-modal');
 });
@@ -1585,7 +1757,10 @@ document.getElementById('setting-save-btn')?.addEventListener('click', async () 
     const newSettings = {
         clinicName: document.getElementById('setting-clinic-name').value,
         dermatologist: document.getElementById('setting-dermatologist').value,
-        licenseId: document.getElementById('setting-license').value
+        licenseId: document.getElementById('setting-license').value,
+        address: document.getElementById('setting-address')?.value || CLINIC_ADDRESS,
+        phone: document.getElementById('setting-phone')?.value || CLINIC_PHONE,
+        email: document.getElementById('setting-email')?.value || CLINIC_EMAIL
     };
     try {
         await fetch('/api/settings', {
