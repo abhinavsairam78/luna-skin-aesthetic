@@ -830,19 +830,21 @@ let autosaveTimeout;
 function triggerAutosave() {
     const indicator = document.getElementById('autosave-indicator');
     if (indicator) {
-        indicator.textContent = 'Saving Draft...';
-        indicator.style.color = 'var(--color-outline)';
+        indicator.style.display = 'inline-flex';
+        indicator.textContent = 'Saving...';
+        indicator.style.borderColor = 'var(--color-tertiary)';
     }
 
     clearTimeout(autosaveTimeout);
     autosaveTimeout = setTimeout(async () => {
         saveCurrentInputsToMemory();
         await savePatientToServer(activePatient);
+        saveCustomPatientToLocalStorage(activePatient);
         if (indicator) {
-            indicator.textContent = 'Saved as Draft';
-            indicator.style.color = 'var(--color-secondary)';
+            indicator.textContent = 'Draft Saved';
+            indicator.style.borderColor = 'var(--color-outline)';
         }
-    }, 1000);
+    }, 800);
 }
 
 // ─── LOAD PATIENT DATA INTO FORM ──────────────────────────────
@@ -1967,13 +1969,33 @@ function setupImageUpload(inputId, imageType) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ imageType, base64Data, date })
                 });
-                if (!res.ok) throw new Error('Upload failed');
-                const updated = await res.json();
-                Object.assign(activePatient, updated);
+                if (res.ok) {
+                    const updated = await res.json();
+                    Object.assign(activePatient, updated);
+                } else {
+                    if (imageType === 'before') {
+                        activePatient.beforeImg = base64Data;
+                        if (date) activePatient.beforeDate = date;
+                    } else {
+                        activePatient.afterImg = base64Data;
+                        if (date) activePatient.afterDate = date;
+                    }
+                    await savePatientToServer(activePatient);
+                }
+                saveCustomPatientToLocalStorage(activePatient);
                 loadPatientData(activePatient);
-                showToast(`${imageType === 'before' ? 'Before' : 'After'} photo uploaded successfully.`);
+                showToast(`${imageType === 'before' ? 'Before' : 'After'} photo updated.`);
             } catch (err) {
-                showToast('Failed to upload image.', 'error');
+                if (imageType === 'before') {
+                    activePatient.beforeImg = base64Data;
+                    if (date) activePatient.beforeDate = date;
+                } else {
+                    activePatient.afterImg = base64Data;
+                    if (date) activePatient.afterDate = date;
+                }
+                saveCustomPatientToLocalStorage(activePatient);
+                loadPatientData(activePatient);
+                showToast(`${imageType === 'before' ? 'Before' : 'After'} photo updated.`);
             }
         };
         reader.readAsDataURL(file);

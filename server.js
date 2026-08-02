@@ -669,14 +669,19 @@ app.post('/api/patients/:refId/upload-image', (req, res) => {
 
         const fileName = `${imageType}_${refId}_${Date.now()}.${extension}`;
         const filePath = path.join(UPLOADS_DIR, fileName);
-        fs.writeFileSync(filePath, buffer);
+        let savedPath = `uploads/${fileName}`;
 
-        const relativeUrl = `uploads/${fileName}`;
+        try {
+            fs.writeFileSync(filePath, buffer);
+        } catch (err) {
+            savedPath = base64Data;
+        }
+
         if (imageType === 'before') {
-            patientsList[index].beforeImg = relativeUrl;
+            patientsList[index].beforeImg = savedPath;
             if (date) patientsList[index].beforeDate = date;
         } else if (imageType === 'after') {
-            patientsList[index].afterImg = relativeUrl;
+            patientsList[index].afterImg = savedPath;
             if (date) patientsList[index].afterDate = date;
         }
 
