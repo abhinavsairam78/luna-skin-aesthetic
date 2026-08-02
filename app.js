@@ -2048,20 +2048,6 @@ function setupMobileSidebar(menuBtnId, closeBtnId, sidebarId) {
 function updateDynamicNextSlot() {
     const el = document.getElementById('dynamic-next-slot');
     if (!el) return;
-
-    const now = new Date();
-    let slotTime = new Date();
-    
-    const currentHour = now.getHours();
-    
-    if (currentHour < 15) { // Before 3 PM: show today's afternoon
-        slotTime.setHours(16, 0, 0, 0); // 4:00 PM today
-        el.textContent = `Today at ${formatSlotTime(slotTime)}`;
-    } else { // After 3 PM: show tomorrow morning
-        slotTime.setDate(now.getDate() + 1);
-        slotTime.setHours(9, 30, 0, 0); // 9:30 AM tomorrow
-        el.textContent = `Tomorrow at ${formatSlotTime(slotTime)}`;
-    }
 }
 
 function formatSlotTime(date) {
