@@ -179,7 +179,11 @@ const INITIAL_USERS = [
         specialization: "Lead Clinical Cosmetologist & Dermatologist",
         avatar: "practitioner.jpg",
         phone: "9025676090"
-    }
+    },
+    { id: "patient-1783771615168", name: "Sarah Chen", email: "sarah@test.com", password: "test123", role: "patient", patientRef: "LSA-2026-16892" },
+    { id: "patient-1784103484789", name: "Jane Doe", email: "jane.doe@example.com", password: "password123", role: "patient", patientRef: "LSA-2026-39960" },
+    { id: "patient-1784103990767", name: "Jane Smith", email: "jane.smith@example.com", password: "password123", role: "patient", patientRef: "LSA-2026-26848" },
+    { id: "patient-priya-001", name: "Priya Sharma", email: "priya@patient.com", password: "patient123", role: "patient", patientRef: "LSA-2026-PRIYA" }
 ];
 
 // ─── Filesystem Setup & Data Helpers ─────────────────────────────────────────
@@ -187,35 +191,53 @@ const INITIAL_USERS = [
 const memoryCache = {};
 
 function readDataFile(filename, fallback) {
-    // 1. Check dynamic writable DATA_DIR
+    let data = null;
+
+    // 1. Read dynamic writable DATA_DIR
     const writablePath = path.join(DATA_DIR, filename);
     if (fs.existsSync(writablePath)) {
         try {
-            return JSON.parse(fs.readFileSync(writablePath, 'utf8'));
+            data = JSON.parse(fs.readFileSync(writablePath, 'utf8'));
         } catch (err) {
             console.error(`Error reading ${writablePath}:`, err);
         }
     }
 
-    // 2. Check bundled data dir (__dirname/data/filename)
+    // 2. Read and merge bundled data dir (__dirname/data/filename)
     const bundledPath = path.join(__dirname, 'data', filename);
     if (fs.existsSync(bundledPath)) {
         try {
-            return JSON.parse(fs.readFileSync(bundledPath, 'utf8'));
+            const bundledData = JSON.parse(fs.readFileSync(bundledPath, 'utf8'));
+            if (Array.isArray(bundledData) && Array.isArray(data)) {
+                const key = filename === 'users.json' ? 'id' : 'refId';
+                const existingKeys = new Set(data.map(item => item[key]));
+                bundledData.forEach(item => {
+                    if (item[key] && !existingKeys.has(item[key])) {
+                        data.push(item);
+                        existingKeys.add(item[key]);
+                    }
+                });
+            } else if (!data) {
+                data = bundledData;
+            }
         } catch (err) {
             console.error(`Error reading bundled file ${bundledPath}:`, err);
         }
     }
 
-    // 3. Check memory cache
-    if (memoryCache[filename]) {
-        return memoryCache[filename];
+    if (!data) {
+        data = memoryCache[filename] || fallback;
     }
 
-    // 4. Fallback: cache in memory and attempt to save to writable path
-    memoryCache[filename] = fallback;
-    writeDataFile(filename, fallback);
-    return fallback;
+    // Ensure all patients are assigned to Dr. Krithika SK
+    if (filename === 'patients.json' && Array.isArray(data)) {
+        data.forEach(p => {
+            if (!p.assignedDoctor) p.assignedDoctor = "Dr. Krithika SK";
+        });
+    }
+
+    memoryCache[filename] = data;
+    return data;
 }
 
 function writeDataFile(filename, data) {
@@ -224,7 +246,16 @@ function writeDataFile(filename, data) {
     try {
         fs.writeFileSync(writablePath, JSON.stringify(data, null, 2));
     } catch (err) {
-        console.warn(`Warning: Could not write to ${writablePath} (read-only system): ${err.message}`);
+        console.warn(`Warning: Could not write to ${writablePath}: ${err.message}`);
+    }
+
+    const bundledPath = path.join(__dirname, 'data', filename);
+    if (bundledPath !== writablePath) {
+        try {
+            fs.writeFileSync(bundledPath, JSON.stringify(data, null, 2));
+        } catch (err) {
+            // Ignore in read-only systems
+        }
     }
 }
 

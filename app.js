@@ -1303,7 +1303,7 @@ function switchToTab(tabName) {
         views.caseSheet.style.display = 'none';
         views.patientList.style.display = 'block';
         document.getElementById('sidebar-nav').style.display = 'none';
-        renderPatientDirectory();
+        loadPatientsFromServer().then(() => renderPatientDirectory());
     }
 }
 
