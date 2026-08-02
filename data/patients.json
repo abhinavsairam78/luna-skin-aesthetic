@@ -240,7 +240,7 @@
   {
     "refId": "LSA-2026-16892",
     "name": "Sarah Chen",
-    "age": -48489,
+    "age": 27,
     "gender": "Female",
     "contact": "+971 55 000 1234",
     "email": "sarah@test.com",
@@ -277,7 +277,7 @@
   {
     "refId": "LSA-2026-39960",
     "name": "Jane Doe",
-    "age": "1511",
+    "age": 32,
     "gender": "Not specified",
     "contact": "+971 50 987 6543",
     "email": "jane.doe@example.com",

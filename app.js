@@ -1376,11 +1376,14 @@ function renderPatientDirectory(filteredSearch = '') {
             ? new Date(p.appointment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
             : '—';
 
+        const parsedAge = parseInt(p.age, 10);
+        const ageDisplay = (!isNaN(parsedAge) && parsedAge >= 1 && parsedAge <= 115) ? parsedAge : '—';
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td style="font-weight:700;color:var(--color-primary);font-family:monospace;">${p.refId}</td>
             <td style="font-weight:600;">${p.name}</td>
-            <td>${p.age || '—'}</td>
+            <td>${ageDisplay}</td>
             <td>${p.gender || '—'}</td>
             <td>${p.concern || '—'}</td>
             <td style="white-space:nowrap;">${apptStr}</td>

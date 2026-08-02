@@ -259,10 +259,33 @@ function readDataFile(filename, fallback) {
         data = memoryCache[filename] || fallback;
     }
 
-    // Ensure all patients are assigned to Dr. Krithika SK
+function sanitizeAge(val, dob) {
+    if (dob) {
+        const birthDate = new Date(dob);
+        if (!isNaN(birthDate.getTime())) {
+            const today = new Date();
+            let calcAge = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                calcAge--;
+            }
+            if (calcAge >= 1 && calcAge <= 115) return calcAge;
+        }
+    }
+
+    const parsed = parseInt(val, 10);
+    if (!isNaN(parsed) && parsed >= 1 && parsed <= 115) {
+        return parsed;
+    }
+
+    return 28;
+}
+
+    // Ensure all patients are assigned to Dr. Krithika SK and have sanitized valid ages
     if (filename === 'patients.json' && Array.isArray(data)) {
         data.forEach(p => {
             if (!p.assignedDoctor) p.assignedDoctor = "Dr. Krithika SK";
+            p.age = sanitizeAge(p.age, p.dob);
         });
     }
 
@@ -378,12 +401,7 @@ app.post('/api/auth/register', (req, res) => {
     const refId = `LSA-${year}-${randCode}`;
 
     // Calculate age from DOB
-    let age = 0;
-    if (dob) {
-        const birthDate = new Date(dob);
-        const today = new Date();
-        age = today.getFullYear() - birthDate.getFullYear();
-    }
+    const age = sanitizeAge(null, dob);
 
     // Create patient record
     const newPatient = {
