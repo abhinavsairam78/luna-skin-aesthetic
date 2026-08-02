@@ -155,7 +155,36 @@ const INITIAL_PATIENTS = [
             { name: "Hyaluronic Boost Hydrator", instructions: "Apply AM & PM under moisturizer", qty: 2 }
         ],
         concernsChecklist: { hyperpigmentation: false, acne: false, elasticity: true, dehydration: false },
-        appointment: { date: "2026-07-22", time: "11:45 AM", purpose: "Maintenance Consultation" }
+        appointment: { date: "2026-07-22", time: "11:45 AM", purpose: "Maintenance Consultation" },
+        assignedDoctor: "Dr. Krithika SK"
+    },
+    {
+        refId: "LSA-2026-61201",
+        name: "John",
+        age: 30,
+        gender: "Male",
+        contact: "9025676090",
+        email: "john@example.com",
+        allergies: "None",
+        medications: "None",
+        skintype: "Normal",
+        concern: "Initial Consultation",
+        routine: "",
+        observations: "New client registration.",
+        protocol: "Initial consultation & skin health assessment.",
+        status: "Active",
+        signed: false,
+        signatureId: "",
+        beforeDate: "",
+        afterDate: "",
+        beforeImg: "",
+        afterImg: "",
+        procedures: [],
+        logs: [],
+        skincare: [],
+        concernsChecklist: { hyperpigmentation: false, acne: false, elasticity: false, dehydration: false },
+        appointment: null,
+        assignedDoctor: "Dr. Krithika SK"
     }
 ];
 
@@ -183,7 +212,8 @@ const INITIAL_USERS = [
     { id: "patient-1783771615168", name: "Sarah Chen", email: "sarah@test.com", password: "test123", role: "patient", patientRef: "LSA-2026-16892" },
     { id: "patient-1784103484789", name: "Jane Doe", email: "jane.doe@example.com", password: "password123", role: "patient", patientRef: "LSA-2026-39960" },
     { id: "patient-1784103990767", name: "Jane Smith", email: "jane.smith@example.com", password: "password123", role: "patient", patientRef: "LSA-2026-26848" },
-    { id: "patient-priya-001", name: "Priya Sharma", email: "priya@patient.com", password: "patient123", role: "patient", patientRef: "LSA-2026-PRIYA" }
+    { id: "patient-priya-001", name: "Priya Sharma", email: "priya@patient.com", password: "patient123", role: "patient", patientRef: "LSA-2026-PRIYA" },
+    { id: "patient-john-61201", name: "John", email: "john@example.com", password: "password123", role: "patient", patientRef: "LSA-2026-61201" }
 ];
 
 // ─── Filesystem Setup & Data Helpers ─────────────────────────────────────────

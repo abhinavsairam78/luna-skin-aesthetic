@@ -1,0 +1,53 @@
+[
+  {
+    "id": "doctor-001",
+    "name": "Dr. Krithika SK",
+    "email": "lunaskinaesthetics24@gmail.com",
+    "password": "krithika2026",
+    "role": "doctor",
+    "licenseId": "#882-LUNA-SAFE-921",
+    "specialization": "Lead Clinical Cosmetologist & Dermatologist",
+    "avatar": "practitioner.jpg",
+    "phone": "9025676090"
+  },
+  {
+    "id": "patient-1783771615168",
+    "name": "Sarah Chen",
+    "email": "sarah@test.com",
+    "password": "test123",
+    "role": "patient",
+    "patientRef": "LSA-2026-16892"
+  },
+  {
+    "id": "patient-1784103484789",
+    "name": "Jane Doe",
+    "email": "jane.doe@example.com",
+    "password": "password123",
+    "role": "patient",
+    "patientRef": "LSA-2026-39960"
+  },
+  {
+    "id": "patient-1784103990767",
+    "name": "Jane Smith",
+    "email": "jane.smith@example.com",
+    "password": "password123",
+    "role": "patient",
+    "patientRef": "LSA-2026-26848"
+  },
+  {
+    "id": "patient-priya-001",
+    "name": "Priya Sharma",
+    "email": "priya@patient.com",
+    "password": "patient123",
+    "role": "patient",
+    "patientRef": "LSA-2026-PRIYA"
+  },
+  {
+    "id": "patient-john-61201",
+    "name": "John",
+    "email": "john@example.com",
+    "password": "password123",
+    "role": "patient",
+    "patientRef": "LSA-2026-61201"
+  }
+]

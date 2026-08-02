@@ -1,0 +1,23 @@
+[
+  {
+    "id": "notif-1784274020619-26",
+    "message": "New appointment booked by Priya Sharma on 2026-07-18 at 09:00 AM (Follow-up Consultation)",
+    "type": "appointment",
+    "timestamp": "2026-07-17T07:40:20.619Z",
+    "read": false
+  },
+  {
+    "id": "notif-1784274020634-142",
+    "message": "SMS alert sent to Dr. Elena Vogt at +971 50 888 2921",
+    "type": "sms",
+    "timestamp": "2026-07-17T07:40:20.634Z",
+    "read": false
+  },
+  {
+    "id": "notif-1784274020644-142",
+    "message": "Email notification sent to dr.vogt@luna.com",
+    "type": "email",
+    "timestamp": "2026-07-17T07:40:20.644Z",
+    "read": false
+  }
+]

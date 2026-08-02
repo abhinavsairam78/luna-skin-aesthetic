@@ -277,6 +277,10 @@ async function handleRegister(e) {
         currentSession = data;
         localStorage.setItem('luna-session', JSON.stringify(data));
 
+        if (data.patientRecord) {
+            saveCustomPatientToLocalStorage(data.patientRecord);
+        }
+
         showToast(`Account created! Welcome, ${data.name}!`);
         initPatientPortal(data);
         showPage('patient');
@@ -714,11 +718,39 @@ async function initDoctorPortal(session) {
     await loadNotifications();
 }
 
+function getCustomPatientsFromLocalStorage() {
+    try {
+        const saved = localStorage.getItem('luna-custom-patients');
+        return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveCustomPatientToLocalStorage(patientRecord) {
+    if (!patientRecord || !patientRecord.refId) return;
+    try {
+        const list = getCustomPatientsFromLocalStorage();
+        const index = list.findIndex(p => p.refId === patientRecord.refId);
+        if (index !== -1) list[index] = patientRecord;
+        else list.push(patientRecord);
+        localStorage.setItem('luna-custom-patients', JSON.stringify(list));
+    } catch (e) {}
+}
+
 // Patient Database loading
 async function loadPatientsFromServer() {
     try {
         const res = await fetch('/api/patients');
         patients = await res.json();
+
+        // Merge locally registered patients from localStorage (ensures serverless consistency)
+        const customPatients = getCustomPatientsFromLocalStorage();
+        customPatients.forEach(cp => {
+            if (cp && cp.refId && !patients.some(p => p.refId === cp.refId)) {
+                patients.push(cp);
+            }
+        });
 
         const currentRef = activePatient ? activePatient.refId : null;
         if (currentRef) {
