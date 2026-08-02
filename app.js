@@ -1285,9 +1285,20 @@ function setSliderPosition(x) {
 sliderHandle?.addEventListener('mousedown', e => { isDragging = true; e.preventDefault(); });
 window.addEventListener('mouseup', () => { isDragging = false; });
 window.addEventListener('mousemove', e => { if (isDragging) setSliderPosition(e.clientX); });
-sliderHandle?.addEventListener('touchstart', () => { isDragging = true; });
+
+sliderHandle?.addEventListener('touchstart', e => { 
+    isDragging = true; 
+    if (e.cancelable) e.preventDefault(); 
+}, { passive: false });
+
 window.addEventListener('touchend', () => { isDragging = false; });
-window.addEventListener('touchmove', e => { if (isDragging) setSliderPosition(e.touches[0].clientX); });
+window.addEventListener('touchcancel', () => { isDragging = false; });
+window.addEventListener('touchmove', e => { 
+    if (isDragging && e.touches && e.touches[0]) {
+        if (e.cancelable) e.preventDefault();
+        setSliderPosition(e.touches[0].clientX);
+    }
+}, { passive: false });
 
 // Photo view mode toggle
 document.getElementById('photo-mode-split')?.addEventListener('click', () => {

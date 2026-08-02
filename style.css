@@ -3107,3 +3107,161 @@ footer.app-footer .footer-links a:hover {
     height: 36px;
     transition: background-color 0.2s;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   IPAD & SAFARI TOUCH OPTIMIZATION (iPadOS Safari Compatible)
+   ══════════════════════════════════════════════════════════════ */
+
+/* 1. Global Touch & WebKit Resets */
+html, body {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    touch-action: manipulation;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+/* Fix iOS Safari form control defaults & native highlights */
+input, select, textarea, button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure smooth scrolling on iPad touch containers */
+.main-content, 
+.table-clinical-container, 
+.modal-body, 
+.sidebar-nav, 
+.day-schedule-list,
+.photo-view-section {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Minimum 44px touch targets for iPad touch interaction */
+.btn-primary, 
+.btn-secondary, 
+.btn-danger, 
+.tab-btn, 
+.sidebar-link, 
+.header-icon, 
+.assessor-opt-btn, 
+.calendar-day, 
+.modal-close,
+.select-patient-btn,
+.delete-patient-btn {
+    min-height: 44px;
+    touch-action: manipulation;
+}
+
+/* Fix iOS date/time picker alignment & Safari text fields */
+input[type="date"], input[type="time"] {
+    min-height: 44px;
+    background-color: var(--color-surface);
+    -webkit-appearance: none;
+}
+
+/* 2. iPad Portrait & Tablet Media Queries (Width: 768px to 1024px) */
+@media (max-width: 1024px) {
+    .sidebar-nav {
+        position: fixed;
+        left: -280px;
+        top: 0;
+        width: 280px;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 100;
+        transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 0 32px rgba(0,0,0,0.2);
+    }
+    
+    .sidebar-nav.mobile-active,
+    .sidebar-nav.open {
+        left: 0 !important;
+        display: flex !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    
+    .mobile-menu-btn, #doctor-mobile-menu-btn, #patient-mobile-menu-btn {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 8px;
+        background: var(--color-surface-container-low);
+        color: var(--color-primary);
+        cursor: pointer;
+    }
+    
+    header.app-header {
+        padding: 12px 16px;
+    }
+    
+    header.app-header .logo-area {
+        gap: 12px;
+    }
+
+    .brand-logo-svg {
+        width: 36px;
+        height: 36px;
+    }
+
+    .font-display-lg-mobile {
+        font-size: 18px;
+    }
+
+    .patient-action-bar {
+        padding: 12px 16px;
+        top: 57px;
+    }
+
+    .grid-12, .grid-3, .grid-2 {
+        grid-template-columns: 1fr !important;
+    }
+
+    .col-5, .col-7, .col-8, .col-4 {
+        grid-column: span 1 !important;
+    }
+    
+    .table-clinical-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+    }
+    
+    .table-clinical th, .table-clinical td {
+        padding: 12px 10px;
+        font-size: 13px;
+    }
+    
+    .slider-container {
+        aspect-ratio: 4 / 3;
+        max-height: 420px;
+    }
+}
+
+/* 3. iPad Landscape Media Queries (Width: 1025px to 1366px) */
+@media (min-width: 1025px) and (max-width: 1366px) {
+    .sidebar-nav {
+        width: 220px;
+    }
+    .main-content {
+        margin-left: 220px;
+    }
+    header.app-header {
+        padding: 14px 20px;
+    }
+    .patient-action-bar {
+        padding: 14px 20px;
+    }
+    .case-card {
+        padding: 24px;
+    }
+}
