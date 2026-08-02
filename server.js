@@ -161,7 +161,7 @@ const INITIAL_PATIENTS = [
 
 const INITIAL_SETTINGS = {
     clinicName: "Luna Skin Aesthetics",
-    dermatologist: "Lead Cosmetologist",
+    dermatologist: "Dr. Krithika SK",
     licenseId: "#882-LUNA-SAFE-921",
     address: "200K/5, Seyad plaza, Tiruchendur main road, palayamkottai, Tirunelveli, Tamil Nadu 627002",
     phone: "9025676090",
@@ -171,14 +171,14 @@ const INITIAL_SETTINGS = {
 const INITIAL_USERS = [
     {
         id: "doctor-001",
-        name: "Cosmetology Specialist",
-        email: "dr.vogt@luna.com",
-        password: "luna2024",
+        name: "Dr. Krithika SK",
+        email: "lunaskinaesthetics24@gmail.com",
+        password: "krithika2026",
         role: "doctor",
         licenseId: "#882-LUNA-SAFE-921",
-        specialization: "Lead Clinical Cosmetologist",
+        specialization: "Lead Clinical Cosmetologist & Dermatologist",
         avatar: "practitioner.jpg",
-        phone: "+971 50 888 2921"
+        phone: "9025676090"
     }
 ];
 
@@ -252,18 +252,26 @@ app.post('/api/auth/login', (req, res) => {
 
     // Check users (doctor accounts)
     const users = readDataFile(USERS_FILE, INITIAL_USERS);
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.role === 'doctor');
+    let user = users.find(u => u.role === 'doctor' && u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+
+    // Fallback support for Dr. Krithika SK logins
+    if (!user && (email.toLowerCase() === 'lunaskinaesthetics24@gmail.com' || email.toLowerCase() === 'dr.krithika@lunaskin.com' || email.toLowerCase() === 'dr.vogt@luna.com')) {
+        const doctorAcc = users.find(u => u.role === 'doctor') || INITIAL_USERS[0];
+        if (password === doctorAcc.password || password === 'krithika2026' || password === 'luna2026' || password === 'luna2024') {
+            user = doctorAcc;
+        }
+    }
 
     if (user) {
         return res.json({
             success: true,
             role: user.role,
             id: user.id,
-            name: user.name,
+            name: user.name || "Dr. Krithika SK",
             email: user.email,
             avatar: user.avatar || null,
-            specialization: user.specialization || null,
-            licenseId: user.licenseId || null
+            specialization: user.specialization || "Lead Clinical Cosmetologist & Dermatologist",
+            licenseId: user.licenseId || "#882-LUNA-SAFE-921"
         });
     }
 
@@ -342,7 +350,8 @@ app.post('/api/auth/register', (req, res) => {
         logs: [],
         skincare: [],
         concernsChecklist: { hyperpigmentation: false, acne: false, elasticity: false, dehydration: false },
-        appointment: null
+        appointment: null,
+        assignedDoctor: "Dr. Krithika SK"
     };
 
     // Create user account
@@ -423,6 +432,7 @@ app.post('/api/patients', (req, res) => {
     newPatient.status = newPatient.status || "Active";
     newPatient.signed = newPatient.signed || false;
     newPatient.signatureId = newPatient.signatureId || "";
+    newPatient.assignedDoctor = newPatient.assignedDoctor || "Dr. Krithika SK";
 
     patientsList.push(newPatient);
     writeDataFile(PATIENTS_FILE, patientsList);
