@@ -330,6 +330,40 @@ footer.app-footer p.font-display-lg {
 
 .header-icon:hover {
     background-color: var(--color-surface-container-low);
+    border-radius: 9999px;
+}
+
+.header-icon-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.header-icon-wrapper:hover .header-icon {
+    background-color: var(--color-surface-container-low);
+    border-radius: 9999px;
+}
+
+.notif-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background-color: #d97706;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    border: 2px solid var(--color-surface);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .profile-avatar {

@@ -1957,7 +1957,13 @@ async function clearNotifications() {
     }
 }
 
-document.getElementById('notif-btn')?.addEventListener('click', () => {
+document.getElementById('notif-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openNotificationsModal();
+});
+
+document.getElementById('notif-wrapper')?.addEventListener('click', (e) => {
+    e.stopPropagation();
     openNotificationsModal();
 });
 
