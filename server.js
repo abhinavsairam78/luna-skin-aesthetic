@@ -338,8 +338,8 @@ app.post('/api/auth/login', (req, res) => {
     const users = readDataFile(USERS_FILE, INITIAL_USERS);
     let user = users.find(u => u.role === 'doctor' && u.email.toLowerCase() === email.toLowerCase() && u.password === password);
 
-    // Fallback support for Dr. Krithika SK logins
-    if (!user && (email.toLowerCase() === 'lunaskinaesthetics24@gmail.com' || email.toLowerCase() === 'dr.krithika@lunaskin.com' || email.toLowerCase() === 'dr.vogt@luna.com')) {
+    // Fallback support for Mrs. Krithika SK logins
+    if (!user && (email.toLowerCase() === 'lunaskinaesthetics24@gmail.com' || email.toLowerCase() === 'dr.krithika@lunaskin.com')) {
         const doctorAcc = users.find(u => u.role === 'doctor') || INITIAL_USERS[0];
         if (password === doctorAcc.password || password === 'krithika2026' || password === 'luna2026' || password === 'luna2024') {
             user = doctorAcc;
@@ -351,7 +351,7 @@ app.post('/api/auth/login', (req, res) => {
             success: true,
             role: user.role,
             id: user.id,
-            name: user.name || "Dr. Krithika SK",
+            name: user.name || "Mrs. Krithika SK",
             email: user.email,
             avatar: user.avatar || null,
             specialization: user.specialization || "Lead Clinical Cosmetologist & Dermatologist",
