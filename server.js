@@ -190,7 +190,7 @@ const INITIAL_PATIENTS = [
 
 const INITIAL_SETTINGS = {
     clinicName: "Luna Skin Aesthetics",
-    dermatologist: "Dr. Krithika SK",
+    dermatologist: "Mrs. Krithika SK",
     licenseId: "#882-LUNA-SAFE-921",
     address: "200K/5, Seyad plaza, Tiruchendur main road, palayamkottai, Tirunelveli, Tamil Nadu 627002",
     phone: "9025676090",
@@ -200,12 +200,12 @@ const INITIAL_SETTINGS = {
 const INITIAL_USERS = [
     {
         id: "doctor-001",
-        name: "Dr. Krithika SK",
+        name: "Mrs. Krithika SK",
         email: "lunaskinaesthetics24@gmail.com",
         password: "krithika2026",
         role: "doctor",
         licenseId: "#882-LUNA-SAFE-921",
-        specialization: "Lead Clinical Cosmetologist & Dermatologist",
+        specialization: "Lead Clinical Cosmetologist & Founder",
         avatar: "practitioner.jpg",
         phone: "9025676090"
     },

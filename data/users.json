@@ -1,12 +1,12 @@
 [
   {
     "id": "doctor-001",
-    "name": "Dr. Krithika SK",
+    "name": "Mrs. Krithika SK",
     "email": "lunaskinaesthetics24@gmail.com",
     "password": "krithika2026",
     "role": "doctor",
     "licenseId": "#882-LUNA-SAFE-921",
-    "specialization": "Lead Clinical Cosmetologist & Dermatologist",
+    "specialization": "Lead Clinical Cosmetologist & Founder",
     "avatar": "practitioner.jpg",
     "phone": "9025676090"
   },

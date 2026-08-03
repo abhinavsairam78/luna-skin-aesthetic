@@ -1626,6 +1626,32 @@ document.getElementById('modal-save-btn')?.addEventListener('click', async () =>
     showToast(`Appointment scheduled for ${dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}.`);
 });
 
+// Helper for selecting 1 of 4 core service cards in modal
+function selectModalServiceCard(cardEl, serviceName) {
+    document.querySelectorAll('#modal-service-cards .service-option-card').forEach(c => c.classList.remove('selected'));
+    cardEl.classList.add('selected');
+    const input = document.getElementById('modal-purpose-input');
+    if (input) input.value = serviceName;
+}
+
+// Configurable time slot generator based on duration selection
+function updateModalTimeSlots() {
+    const duration = parseInt(document.getElementById('modal-duration-select')?.value) || 60;
+    const select = document.getElementById('modal-time-select');
+    if (!select) return;
+
+    select.innerHTML = '';
+    const baseSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM'];
+
+    baseSlots.forEach((slotTime, idx) => {
+        const opt = document.createElement('option');
+        opt.value = slotTime;
+        opt.textContent = `${slotTime} (${duration} mins slot)`;
+        if (idx === 1) opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+
 // ─── ADD PROCEDURE MODAL ──────────────────────────────────────
 document.getElementById('add-procedure-btn')?.addEventListener('click', () => {
     document.getElementById('proc-name-input').value = '';
@@ -1844,54 +1870,77 @@ async function loadNotifications() {
     }
 }
 
+let currentNotifFilter = 'all';
+let cachedNotifications = [];
+
+function filterNotifications(channel) {
+    currentNotifFilter = channel;
+    ['all', 'sms', 'email', 'appointment'].forEach(ch => {
+        const btn = document.getElementById('notif-filter-' + ch);
+        if (btn) btn.classList.toggle('active', ch === channel);
+    });
+    renderNotificationsList();
+}
+
 async function openNotificationsModal() {
     try {
         const res = await fetch('/api/notifications');
-        const notifs = await res.json();
-        const container = document.getElementById('notifications-modal-body');
-        if (!container) return;
-        
-        container.innerHTML = '';
-        if (notifs.length === 0) {
-            container.innerHTML = '<p class="text-secondary" style="text-align:center;font-style:italic;padding:20px 0;">No notifications found.</p>';
-        } else {
-            // Sort by timestamp descending
-            const sorted = [...notifs].reverse();
-            sorted.forEach(n => {
-                const item = document.createElement('div');
-                item.className = `notif-item ${n.read ? '' : 'unread'}`;
-                item.style.cssText = `
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 12px;
-                    padding: 12px;
-                    border: 1px solid var(--color-outline-variant);
-                    background-color: ${n.read ? 'transparent' : 'var(--color-surface-container-low)'};
-                `;
-                
-                let icon = 'info';
-                let iconColor = 'var(--color-primary)';
-                if (n.type === 'sms') { icon = 'sms'; iconColor = '#ffb74d'; }
-                else if (n.type === 'email') { icon = 'mail'; iconColor = '#4fc3f7'; }
-                else if (n.type === 'appointment') { icon = 'calendar_month'; iconColor = 'var(--color-primary)'; }
-                
-                const timeStr = new Date(n.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ' + 
-                                new Date(n.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-                item.innerHTML = `
-                    <span class="material-symbols-outlined" style="color:${iconColor};font-size:20px;margin-top:2px;">${icon}</span>
-                    <div style="flex:1;">
-                        <p class="font-body-md" style="font-weight:${n.read ? '400' : '600'};margin:0;font-size:13px;line-height:1.4;">${n.message}</p>
-                        <span class="text-secondary" style="font-size:10px;display:block;margin-top:4px;">${timeStr}</span>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-        }
+        cachedNotifications = await res.json();
+        renderNotificationsList();
         openModal('notifications-modal');
     } catch (err) {
         console.error('Failed to show notifications:', err);
     }
+}
+
+function renderNotificationsList() {
+    const container = document.getElementById('notifications-modal-body');
+    if (!container) return;
+
+    container.innerHTML = '';
+    let notifs = cachedNotifications;
+
+    if (currentNotifFilter !== 'all') {
+        notifs = notifs.filter(n => n.type === currentNotifFilter);
+    }
+
+    if (notifs.length === 0) {
+        container.innerHTML = `<p class="text-secondary" style="text-align:center;font-style:italic;padding:24px 0;">No ${currentNotifFilter !== 'all' ? currentNotifFilter.toUpperCase() : ''} notifications found.</p>`;
+        return;
+    }
+
+    const sorted = [...notifs].reverse();
+    sorted.forEach(n => {
+        const item = document.createElement('div');
+        item.className = `notif-item ${n.read ? '' : 'unread'}`;
+        item.style.cssText = `
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px;
+            border: 1px solid var(--color-outline-variant);
+            border-radius: 8px;
+            background-color: ${n.read ? 'transparent' : 'var(--color-surface-container-low)'};
+        `;
+
+        let icon = 'info';
+        let iconColor = 'var(--color-primary)';
+        if (n.type === 'sms') { icon = 'sms'; iconColor = '#ffb74d'; }
+        else if (n.type === 'email') { icon = 'mail'; iconColor = '#4fc3f7'; }
+        else if (n.type === 'appointment') { icon = 'calendar_month'; iconColor = '#d97706'; }
+
+        const timeStr = new Date(n.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' · ' + 
+                        new Date(n.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        item.innerHTML = `
+            <span class="material-symbols-outlined" style="color:${iconColor};font-size:22px;margin-top:2px;">${icon}</span>
+            <div style="flex:1;">
+                <p class="font-body-md" style="font-weight:${n.read ? '400' : '600'};margin:0;font-size:13px;line-height:1.4;">${n.message}</p>
+                <span class="text-secondary" style="font-size:10px;display:block;margin-top:4px;">${timeStr}</span>
+            </div>
+        `;
+        container.appendChild(item);
+    });
 }
 
 async function clearNotifications() {
@@ -1899,17 +1948,9 @@ async function clearNotifications() {
         const res = await fetch('/api/notifications/clear', { method: 'POST' });
         if (res.ok) {
             showToast('All notifications marked as read.');
+            cachedNotifications.forEach(n => n.read = true);
+            renderNotificationsList();
             await loadNotifications();
-            // Re-render open modal content
-            const container = document.getElementById('notifications-modal-body');
-            if (container) {
-                const items = container.querySelectorAll('.notif-item');
-                items.forEach(item => {
-                    item.style.backgroundColor = 'transparent';
-                    const p = item.querySelector('p');
-                    if (p) p.style.fontWeight = '400';
-                });
-            }
         }
     } catch (err) {
         showToast('Failed to clear notifications.', 'error');
