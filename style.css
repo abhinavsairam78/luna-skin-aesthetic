@@ -3524,3 +3524,372 @@ input[type="date"], input[type="time"] {
         padding: 24px;
     }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   COMPLETE MOBILE RESPONSIVE ADAPTABILITY SYSTEM
+   ══════════════════════════════════════════════════════════════ */
+
+/* 1. Tablet & Mobile Landscape (max-width: 1024px) */
+@media (max-width: 1024px) {
+    :root {
+        --margin-desktop: 20px;
+    }
+
+    .landing-nav {
+        padding: 0 20px;
+    }
+
+    .landing-nav-links {
+        gap: 16px;
+    }
+
+    .hero-section {
+        padding: 100px 20px 60px;
+        flex-direction: column;
+        text-align: center;
+        min-height: auto;
+    }
+
+    .hero-content {
+        max-width: 100%;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .hero-eyebrow {
+        margin: 0 auto 20px;
+    }
+
+    .hero-headline {
+        font-size: clamp(32px, 6vw, 48px);
+        margin: 0 auto 20px;
+    }
+
+    .hero-subtext {
+        margin: 0 auto 32px;
+        max-width: 100%;
+    }
+
+    .hero-actions {
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 40px;
+    }
+
+    .hero-stats {
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .hero-image-panel {
+        position: relative;
+        right: auto;
+        top: auto;
+        transform: none;
+        margin: 40px auto 0;
+        width: 300px;
+        height: 300px;
+    }
+
+    .landing-section {
+        padding: 60px 20px;
+    }
+
+    .services-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .about-grid {
+        grid-template-columns: 1fr;
+        gap: 36px;
+    }
+
+    .booking-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .footer-top {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .footer-links-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+    }
+}
+
+/* 2. Mobile Devices & Small Tablets (max-width: 768px) */
+@media (max-width: 768px) {
+    :root {
+        --margin-desktop: 16px;
+    }
+
+    .landing-nav-inner {
+        height: 64px;
+    }
+
+    .landing-nav-links {
+        display: none;
+    }
+
+    .landing-nav-actions {
+        gap: 8px;
+    }
+
+    .btn-nav-ghost, .btn-nav-primary {
+        padding: 6px 12px;
+        font-size: 11px;
+        min-height: 38px;
+    }
+
+    .hero-section {
+        padding: 84px 16px 40px;
+    }
+
+    .hero-headline {
+        font-size: clamp(26px, 7.5vw, 36px);
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        margin-bottom: 32px;
+    }
+
+    .btn-hero-primary, .btn-hero-ghost {
+        width: 100%;
+        justify-content: center;
+        padding: 14px 20px;
+    }
+
+    .hero-stats {
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .hero-stat-divider {
+        display: none;
+    }
+
+    .hero-image-panel {
+        width: 240px;
+        height: 240px;
+    }
+
+    .hero-center-circle {
+        width: 180px;
+        height: 180px;
+    }
+
+    .hero-float-card {
+        padding: 8px 12px;
+    }
+    
+    .hero-float-card p {
+        font-size: 11px !important;
+    }
+
+    .hero-float-card.card-1 { top: 0; left: -20px; }
+    .hero-float-card.card-2 { bottom: 0; right: -20px; }
+    .hero-float-card.card-3 { top: 25%; right: -25px; }
+    .hero-float-card.card-4 { bottom: 25%; left: -25px; }
+
+    .services-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .service-card {
+        padding: 24px 16px;
+    }
+
+    .assessor-card {
+        padding: 24px 16px;
+    }
+
+    .assessor-options-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-form-card {
+        padding: 24px 16px;
+    }
+
+    .booking-contact-pills {
+        margin: 20px 0 28px;
+    }
+
+    .landing-footer {
+        padding: 40px 16px 80px;
+    }
+
+    .footer-links-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+    }
+
+    .footer-bottom-links {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .auth-layout {
+        flex-direction: column;
+    }
+
+    .auth-brand-panel {
+        padding: 32px 16px;
+        min-height: auto;
+    }
+
+    .auth-form-panel {
+        padding: 32px 16px;
+    }
+
+    .auth-brand-stats {
+        justify-content: center;
+        gap: 16px;
+    }
+
+    .patient-action-bar {
+        position: relative;
+        top: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .patient-action-bar .action-buttons {
+        width: 100%;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .patient-action-bar .action-buttons button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .main-layout {
+        padding: 24px 16px 80px;
+        gap: 24px;
+    }
+
+    .case-card {
+        padding: 20px 16px;
+    }
+
+    .calendar-widget {
+        flex-direction: column;
+    }
+
+    .calendar-days-grid {
+        gap: 4px;
+    }
+
+    .calendar-day {
+        min-height: 48px;
+        font-size: 13px;
+        padding: 4px;
+    }
+
+    .modal-content {
+        width: 95%;
+        max-width: 100%;
+        max-height: 90vh;
+        margin: 10px;
+        padding: 20px 16px;
+        border-radius: 12px;
+    }
+
+    .modal-header h3 {
+        font-size: 16px;
+    }
+
+    .modal-body {
+        max-height: 65vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+    }
+
+    .modal-footer button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .patient-search-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .search-input-wrapper {
+        width: 100%;
+    }
+
+    #btn-add-patient {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .slider-container {
+        aspect-ratio: 4 / 3;
+        max-height: 320px;
+    }
+}
+
+/* 3. Small Mobile Screen Optimization (max-width: 480px) */
+@media (max-width: 480px) {
+    .font-headline-md {
+        font-size: 20px;
+    }
+
+    .font-body-lg {
+        font-size: 15px;
+    }
+
+    .font-body-md {
+        font-size: 14px;
+    }
+
+    .service-cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .service-option-card {
+        padding: 12px;
+    }
+
+    .hero-stat-num {
+        font-size: 24px;
+    }
+
+    .photo-mode-toggle {
+        width: 100%;
+    }
+
+    .photo-mode-btn {
+        flex: 1;
+        text-align: center;
+    }
+}
+
