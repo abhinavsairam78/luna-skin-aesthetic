@@ -14,7 +14,7 @@
     "id": "patient-1783771615168",
     "name": "Sarah Chen",
     "email": "sarah@test.com",
-    "password": "test123",
+    "password": "sarah2026",
     "role": "patient",
     "patientRef": "LSA-2026-16892"
   },
@@ -22,7 +22,7 @@
     "id": "patient-1784103484789",
     "name": "Jane Doe",
     "email": "jane.doe@example.com",
-    "password": "password123",
+    "password": "jane2026",
     "role": "patient",
     "patientRef": "LSA-2026-39960"
   },
@@ -30,7 +30,7 @@
     "id": "patient-1784103990767",
     "name": "Jane Smith",
     "email": "jane.smith@example.com",
-    "password": "password123",
+    "password": "janesmith2026",
     "role": "patient",
     "patientRef": "LSA-2026-26848"
   },
@@ -38,7 +38,7 @@
     "id": "patient-priya-001",
     "name": "Priya Sharma",
     "email": "priya@patient.com",
-    "password": "patient123",
+    "password": "priya2026",
     "role": "patient",
     "patientRef": "LSA-2026-PRIYA"
   },
@@ -46,7 +46,7 @@
     "id": "patient-john-61201",
     "name": "John",
     "email": "john@example.com",
-    "password": "password123",
+    "password": "john2026",
     "role": "patient",
     "patientRef": "LSA-2026-61201"
   },
@@ -54,7 +54,7 @@
     "id": "patient-farook-001",
     "name": "Farook Al-Aziz",
     "email": "farook@example.com",
-    "password": "password123",
+    "password": "farook2026",
     "role": "patient",
     "patientRef": "LSA-2024-00892"
   },
@@ -62,7 +62,7 @@
     "id": "patient-elena-001",
     "name": "Elena Rostova",
     "email": "elena@example.com",
-    "password": "password123",
+    "password": "elena2026",
     "role": "patient",
     "patientRef": "LSA-2024-00781"
   },
@@ -70,7 +70,7 @@
     "id": "patient-marcus-001",
     "name": "Marcus Vance",
     "email": "marcus@example.com",
-    "password": "password123",
+    "password": "marcus2026",
     "role": "patient",
     "patientRef": "LSA-2024-00910"
   }

@@ -1083,10 +1083,10 @@ select.input-clinical {
 
 /* Patient List Tab View */
 .patient-list-section {
-    padding: 48px var(--margin-desktop);
-    max-width: var(--container-max);
+    padding: 32px var(--margin-desktop);
+    max-width: 100%;
     width: 100%;
-    margin: 0 auto;
+    margin: 0;
 }
 
 .patient-table-card {

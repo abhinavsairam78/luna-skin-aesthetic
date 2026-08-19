@@ -1895,7 +1895,7 @@ function openCredentialsModal(patient) {
     const name = patient.name || 'Client';
     const ref = patient.refId || '—';
     const email = patient.email || 'N/A (No email specified)';
-    const password = 'password123';
+    const password = patient.password || (email && email.includes('@') ? (email.split('@')[0] + '2026') : 'password123');
 
     document.getElementById('cred-display-name').textContent = name;
     document.getElementById('cred-display-ref').textContent = ref;
@@ -1905,7 +1905,7 @@ function openCredentialsModal(patient) {
     const copySuccess = document.getElementById('cred-copy-success');
     if (copySuccess) copySuccess.style.display = 'none';
 
-    const copyText = `LUNA SKIN AESTHETICS — Patient Portal Login Credentials\n\nClient Name: ${name}\nClient ID (Ref ID): ${ref}\nLogin Email (Mail ID): ${email}\nDefault Password: ${password}\nPortal Link: https://lunaskinaesthetics.com\n\nPlease sign in to access your clinical case summary and manage appointments.`;
+    const copyText = `LUNA SKIN AESTHETICS — Patient Portal Login Credentials\n\nClient Name: ${name}\nClient ID (Ref ID): ${ref}\nLogin Email (Mail ID): ${email}\nLogin Password: ${password}\nPortal Link: https://lunaskinaesthetics.com\n\nPlease sign in to access your clinical case summary and manage appointments.`;
 
     const copyBtn = document.getElementById('cred-copy-btn');
     if (copyBtn) {

@@ -271,11 +271,30 @@ function readDataFile(filename, fallback) {
         data = memoryCache[filename] || fallback;
     }
 
-    // Ensure all patients are assigned to Dr. Krithika SK and have sanitized valid ages
+    // Ensure all patients are assigned to Dr. Krithika SK, have sanitized valid ages, and have matching passwords attached
     if (filename === 'patients.json' && Array.isArray(data)) {
+        let usersList = [];
+        try {
+            const usersPath = path.join(DATA_DIR, USERS_FILE);
+            if (fs.existsSync(usersPath)) {
+                usersList = JSON.parse(fs.readFileSync(usersPath, 'utf8'));
+            } else {
+                const bundledUsersPath = path.join(__dirname, 'data', USERS_FILE);
+                if (fs.existsSync(bundledUsersPath)) {
+                    usersList = JSON.parse(fs.readFileSync(bundledUsersPath, 'utf8'));
+                }
+            }
+        } catch (e) {}
+
         data.forEach(p => {
             if (!p.assignedDoctor) p.assignedDoctor = "Dr. Krithika SK";
             p.age = sanitizeAge(p.age, p.dob);
+            if (Array.isArray(usersList)) {
+                const u = usersList.find(usr => (usr.patientRef && usr.patientRef === p.refId) || (p.email && usr.email && usr.email.toLowerCase() === p.email.toLowerCase() && usr.role === 'patient'));
+                if (u && u.password) {
+                    p.password = u.password;
+                }
+            }
         });
     }
 
@@ -517,16 +536,21 @@ app.post('/api/patients', (req, res) => {
         const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
         const existingUser = usersList.find(u => u.email.toLowerCase() === newPatient.email.toLowerCase());
         if (!existingUser) {
+            // Generate a unique PIN password for each newly created client account
+            const randPass = 'Luna' + Math.floor(1000 + Math.random() * 9000);
             const newUser = {
                 id: `patient-${Date.now()}`,
                 name: newPatient.name,
                 email: newPatient.email.toLowerCase(),
-                password: 'password123',
+                password: randPass,
                 role: 'patient',
                 patientRef: newPatient.refId
             };
             usersList.push(newUser);
             writeDataFile(USERS_FILE, usersList);
+            newPatient.password = randPass;
+        } else {
+            newPatient.password = existingUser.password;
         }
     }
 
@@ -549,8 +573,9 @@ app.put('/api/patients/:refId', (req, res) => {
 
 app.delete('/api/patients/:refId', (req, res) => {
     const patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
-    const refId = req.params.refId;
-    const index = patientsList.findIndex(p => p.refId === refId);
+    const rawRef = req.params.refId || '';
+    const refId = rawRef.trim().toLowerCase();
+    const index = patientsList.findIndex(p => p.refId && p.refId.trim().toLowerCase() === refId);
 
     if (index === -1) {
         return res.status(404).json({ error: "Patient record not found." });
@@ -561,13 +586,13 @@ app.delete('/api/patients/:refId', (req, res) => {
 
     // Also remove corresponding patient user account from USERS_FILE
     const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
-    const userIndex = usersList.findIndex(u => u.patientRef === refId || (deletedPatient.email && u.email.toLowerCase() === deletedPatient.email.toLowerCase() && u.role === 'patient'));
+    const userIndex = usersList.findIndex(u => (u.patientRef && u.patientRef.trim().toLowerCase() === refId) || (deletedPatient.email && u.email && u.email.toLowerCase() === deletedPatient.email.toLowerCase() && u.role === 'patient'));
     if (userIndex !== -1) {
         usersList.splice(userIndex, 1);
         writeDataFile(USERS_FILE, usersList);
     }
 
-    res.json({ message: "Patient record deleted successfully.", refId });
+    res.json({ message: "Patient record deleted successfully.", refId: deletedPatient.refId });
 });
 
 // Patient self-service appointment booking (Patient Portal)
