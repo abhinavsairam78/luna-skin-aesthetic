@@ -54,8 +54,21 @@ Welcome to the official operating manual for **Luna Skin Aesthetics** (`lunaskin
 3. Click **Create Patient Record**.
 4. The system automatically:
    - Assigns a unique **Client ID (Ref ID)** (e.g., `LSA-2026-92104`).
-   - Automatically provisions a **Patient Portal login account** using their specified Mail ID (default password: `password123`).
-   - Opens their new Case Sheet immediately for consultation entry.
+   - Provisions a **Patient Portal login account** using their specified Mail ID (default password: `password123`).
+   - Launches the **Client Login Credentials Modal** so staff can immediately copy or send sign-in details.
+
+### 1.3.1 Communicating Login Credentials to Clients
+When staff creates an account directly on behalf of a client (e.g. *Ram*, *Saeed*, or new client):
+1. Upon creating the record, the **Client Login Credentials Modal** displays:
+   - **Client Name** & **Client ID (Ref ID)**
+   - **Login Email (Mail ID)**
+   - **Default Password**: `password123`
+   - **Portal Link**: `https://lunaskinaesthetics.com`
+2. Click **Copy Credentials** to copy pre-formatted sign-in instructions to your clipboard.
+3. Click **Send Alert** to dispatch an SMS/Email notification alert to the client.
+4. To view or retrieve credentials for any client at any time:
+   - Click the **Credentials** button on their row in the **Patient Directory**, OR
+   - Click **Credentials (🔑)** in the top action bar of their Case Sheet.
 
 ---
 

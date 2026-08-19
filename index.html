@@ -1057,6 +1057,10 @@
                         <p class="text-secondary font-label-sm" style="margin-top:4px;" id="patient-banner-ref">Ref ID: —</p>
                     </div>
                     <div class="action-buttons">
+                        <button class="btn-secondary font-label-sm" id="share-credentials-btn" title="View & Copy Login Credentials for Client">
+                            <span class="material-symbols-outlined" style="font-size:16px;">key</span>
+                            <span>Credentials</span>
+                        </button>
                         <button class="btn-secondary font-label-sm" id="export-pdf-btn">
                             <span class="material-symbols-outlined">picture_as_pdf</span>
                             <span>Export PDF</span>
@@ -1743,6 +1747,59 @@
         <div class="modal-footer">
             <button class="btn-secondary" id="notif-clear-btn">Mark All Read</button>
             <button class="btn-primary" id="notif-close-btn">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Client Account Credentials -->
+<div class="modal-overlay" id="credentials-modal">
+    <div class="modal-content" style="max-width:520px;">
+        <div class="modal-header">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span class="material-symbols-outlined" style="color:var(--color-primary);font-size:24px;">badge</span>
+                <h3 class="font-headline-md text-primary" style="font-size:18px;margin:0;">Client Login Credentials</h3>
+            </div>
+            <span class="material-symbols-outlined modal-close" id="close-credentials-modal-btn">close</span>
+        </div>
+        <div class="modal-body" style="padding-top:16px;">
+            <p class="font-body-md text-secondary" style="margin-bottom:20px;font-size:13px;line-height:1.5;">
+                Client account created in the system. Share these credentials with the client to allow patient portal sign-in.
+            </p>
+            <div style="background:var(--color-surface-container-low);border:1px solid var(--color-outline-variant);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="font-label-sm text-secondary">Client Name:</span>
+                    <span class="font-body-md font-bold" id="cred-display-name">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="font-label-sm text-secondary">Client ID (Ref ID):</span>
+                    <span class="font-body-md font-mono" id="cred-display-ref" style="font-family:monospace;color:var(--color-primary);font-weight:700;">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="font-label-sm text-secondary">Login Email (Mail ID):</span>
+                    <span class="font-body-md font-bold" id="cred-display-email">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="font-label-sm text-secondary">Default Password:</span>
+                    <span class="font-body-md font-mono" id="cred-display-password" style="font-family:monospace;font-weight:700;color:#d97706;">password123</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--color-outline-variant);padding-top:10px;margin-top:4px;">
+                    <span class="font-label-sm text-secondary">Portal Link:</span>
+                    <span class="font-body-md" style="font-size:12px;color:var(--color-primary);">lunaskinaesthetics.com</span>
+                </div>
+            </div>
+            <div id="cred-copy-success" style="display:none;margin-top:12px;text-align:center;color:var(--color-primary);font-size:12px;font-weight:600;">
+                ✓ Credentials copied to clipboard!
+            </div>
+        </div>
+        <div class="modal-footer" style="gap:12px;">
+            <button class="btn-secondary" id="cred-copy-btn" style="flex:1;justify-content:center;">
+                <span class="material-symbols-outlined" style="font-size:16px;">content_copy</span>
+                Copy Credentials
+            </button>
+            <button class="btn-primary" id="cred-send-alert-btn" style="flex:1;justify-content:center;">
+                <span class="material-symbols-outlined" style="font-size:16px;">send</span>
+                Send Alert
+            </button>
         </div>
     </div>
 </div>

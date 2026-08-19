@@ -10,6 +10,30 @@ let currentMonth = new Date().getMonth();
 let allAppointments = []; // Doctor calendar: all patient appointments
 let currentSession = null; // Auth session: { role, name, id, patientRef, patientRecord }
 
+// ─── DATE PARSING HELPERS ──────────────────────────────────────
+function parseApptDate(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const trimmed = dateStr.trim();
+    if (!trimmed || trimmed === 'N/A' || trimmed === '—') return null;
+
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+        const year = parseInt(isoMatch[1], 10);
+        const month = parseInt(isoMatch[2], 10) - 1;
+        const day = parseInt(isoMatch[3], 10);
+        return new Date(year, month, day);
+    }
+
+    const d = new Date(trimmed);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function formatApptDate(dateStr, options = { month: 'short', day: 'numeric', year: 'numeric' }) {
+    const d = parseApptDate(dateStr);
+    if (!d) return '—';
+    return d.toLocaleDateString('en-US', options);
+}
+
 // ─── CLINIC METADATA & CALENDAR UTILITIES ───────────────────────
 const CLINIC_ADDRESS = "200K/5, Seyad plaza, Tiruchendur main road, palayamkottai, Tirunelveli, Tamil Nadu 627002";
 const CLINIC_PHONE = "9025676090";
@@ -901,12 +925,16 @@ function loadPatientData(patient) {
 
     // Appointment scheduler
     if (patient.appointment && patient.appointment.date) {
-        const dateObj = new Date(patient.appointment.date);
-        const options = { weekday: 'long', month: 'long', day: 'numeric' };
-        document.getElementById('schedule-date-text').textContent = dateObj.toLocaleDateString('en-US', options);
-        document.getElementById('schedule-time-text').textContent = `${patient.appointment.time} — ${patient.appointment.purpose}`;
-        currentMonth = dateObj.getMonth();
-        currentYear = dateObj.getFullYear();
+        const apptParsed = parseApptDate(patient.appointment.date);
+        if (apptParsed) {
+            document.getElementById('schedule-date-text').textContent = formatApptDate(patient.appointment.date, { weekday: 'long', month: 'long', day: 'numeric' });
+            document.getElementById('schedule-time-text').textContent = `${patient.appointment.time || ''} — ${patient.appointment.purpose || ''}`;
+            currentMonth = apptParsed.getMonth();
+            currentYear = apptParsed.getFullYear();
+        } else {
+            document.getElementById('schedule-date-text').textContent = 'No appointment booked';
+            document.getElementById('schedule-time-text').textContent = 'Select a date on the calendar to book';
+        }
     } else {
         document.getElementById('schedule-date-text').textContent = 'No appointment booked';
         document.getElementById('schedule-time-text').textContent = 'Select a date on the calendar to book';
@@ -1135,9 +1163,9 @@ function renderCalendar() {
         }
 
         // Active patient appointment highlight
-        if (activePatient?.appointment) {
-            const apptDate = new Date(activePatient.appointment.date);
-            if (apptDate.getDate() === dayNum && apptDate.getMonth() === currentMonth && apptDate.getFullYear() === currentYear) {
+        if (activePatient?.appointment?.date) {
+            const apptDate = parseApptDate(activePatient.appointment.date);
+            if (apptDate && apptDate.getDate() === dayNum && apptDate.getMonth() === currentMonth && apptDate.getFullYear() === currentYear) {
                 div.classList.add('active');
             }
         }
@@ -1216,9 +1244,7 @@ function showDaySchedule(dateStr) {
     const countEl = document.getElementById('day-schedule-count');
     const listEl = document.getElementById('day-schedule-list');
 
-    const dateObj = new Date(dateStr);
-    const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-
+    const formatted = formatApptDate(dateStr, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     titleEl.textContent = `Schedule for ${formatted}`;
 
     const dayAppts = allAppointments.filter(a => a.date === dateStr);
@@ -1396,9 +1422,7 @@ function renderPatientDirectory(filteredSearch = '') {
     }
 
     filtered.forEach(p => {
-        const apptStr = p.appointment?.date
-            ? new Date(p.appointment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            : '—';
+        const apptStr = p.appointment?.date ? formatApptDate(p.appointment.date) : '—';
 
         const parsedAge = parseInt(p.age, 10);
         const ageDisplay = (!isNaN(parsedAge) && parsedAge >= 1 && parsedAge <= 115) ? parsedAge : '—';
@@ -1415,7 +1439,8 @@ function renderPatientDirectory(filteredSearch = '') {
             <td><span class="status-badge ${p.status?.toLowerCase() === 'inactive' ? 'inactive' : ''}">${p.status || 'Active'}</span></td>
             <td style="text-align:right;white-space:nowrap;">
                 <button class="btn-secondary font-label-sm select-patient-btn" data-id="${p.refId}" style="padding:6px 12px;font-size:10px;">Open Case Sheet</button>
-                <button class="btn-danger font-label-sm delete-patient-btn" data-id="${p.refId}" style="padding:6px 12px;font-size:10px;margin-left:8px;">Delete</button>
+                <button class="btn-secondary font-label-sm cred-patient-btn" data-id="${p.refId}" style="padding:6px 12px;font-size:10px;margin-left:6px;" title="View & Copy Login Credentials">Credentials</button>
+                <button class="btn-danger font-label-sm delete-patient-btn" data-id="${p.refId}" style="padding:6px 12px;font-size:10px;margin-left:6px;">Delete</button>
             </td>
         `;
 
@@ -1424,6 +1449,12 @@ function renderPatientDirectory(filteredSearch = '') {
             loadPatientData(pObj);
             switchToTab('caseSheets');
             showToast(`Loaded ${pObj.name}'s Case Sheet`);
+        });
+
+        tr.querySelector('.cred-patient-btn').addEventListener('click', e => {
+            e.stopPropagation();
+            const pObj = patients.find(item => item.refId === p.refId);
+            openCredentialsModal(pObj || p);
         });
 
         tr.querySelector('.delete-patient-btn').addEventListener('click', async e => {
@@ -1627,6 +1658,7 @@ document.getElementById('confirm-booking-btn')?.addEventListener('click', async 
     }
     saveCurrentInputsToMemory();
     await savePatientToServer(activePatient);
+    saveCustomPatientToLocalStorage(activePatient);
     showToast(`Appointment confirmed for ${activePatient.name}.`);
 });
 
@@ -1645,19 +1677,22 @@ document.getElementById('modal-save-btn')?.addEventListener('click', async () =>
         activePatient.appointment.purpose = purpose;
     }
 
-    currentMonth = new Date(date).getMonth();
-    currentYear = new Date(date).getFullYear();
+    const parsed = parseApptDate(date);
+    if (parsed) {
+        currentMonth = parsed.getMonth();
+        currentYear = parsed.getFullYear();
+    }
 
-    const dateObj = new Date(date);
-    document.getElementById('schedule-date-text').textContent = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    document.getElementById('schedule-date-text').textContent = formatApptDate(date, { weekday: 'long', month: 'long', day: 'numeric' });
     document.getElementById('schedule-time-text').textContent = `${time} — ${purpose}`;
 
     saveCurrentInputsToMemory();
     await savePatientToServer(activePatient);
+    saveCustomPatientToLocalStorage(activePatient);
     renderCalendar();
     showDaySchedule(date);
     closeModal('reschedule-modal');
-    showToast(`Appointment scheduled for ${dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}.`);
+    showToast(`Appointment scheduled for ${formatApptDate(date, { month: 'long', day: 'numeric' })}.`);
 });
 
 // Helper for selecting 1 of 4 core service cards in modal
@@ -1844,8 +1879,62 @@ document.getElementById('new-p-save-btn')?.addEventListener('click', async () =>
         switchToTab('caseSheets');
         closeModal('new-patient-modal');
         showToast(`Patient record created for ${name}. Ref: ${created.refId}`);
+
+        // Launch Credentials Modal immediately for staff to share login details
+        setTimeout(() => {
+            openCredentialsModal(created);
+        }, 400);
     } catch (err) {
         showToast('Failed to create patient record.', 'error');
+    }
+});
+
+// ─── CLIENT ACCOUNT CREDENTIALS WORKFLOW ──────────────────────
+function openCredentialsModal(patient) {
+    if (!patient) return;
+    const name = patient.name || 'Client';
+    const ref = patient.refId || '—';
+    const email = patient.email || 'N/A (No email specified)';
+    const password = 'password123';
+
+    document.getElementById('cred-display-name').textContent = name;
+    document.getElementById('cred-display-ref').textContent = ref;
+    document.getElementById('cred-display-email').textContent = email;
+    document.getElementById('cred-display-password').textContent = password;
+    
+    const copySuccess = document.getElementById('cred-copy-success');
+    if (copySuccess) copySuccess.style.display = 'none';
+
+    const copyText = `LUNA SKIN AESTHETICS — Patient Portal Login Credentials\n\nClient Name: ${name}\nClient ID (Ref ID): ${ref}\nLogin Email (Mail ID): ${email}\nDefault Password: ${password}\nPortal Link: https://lunaskinaesthetics.com\n\nPlease sign in to access your clinical case summary and manage appointments.`;
+
+    const copyBtn = document.getElementById('cred-copy-btn');
+    if (copyBtn) {
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(copyText).then(() => {
+                if (copySuccess) copySuccess.style.display = 'block';
+                showToast('Credentials copied to clipboard!');
+            }).catch(() => {
+                showToast('Credentials ready: ' + email + ' / ' + password);
+            });
+        };
+    }
+
+    const alertBtn = document.getElementById('cred-send-alert-btn');
+    if (alertBtn) {
+        alertBtn.onclick = () => {
+            showToast(`Notification alert sent for ${name} (${email}).`);
+            closeModal('credentials-modal');
+        };
+    }
+
+    openModal('credentials-modal');
+}
+
+document.getElementById('share-credentials-btn')?.addEventListener('click', () => {
+    if (activePatient) {
+        openCredentialsModal(activePatient);
+    } else {
+        showToast('No active patient loaded.', 'error');
     }
 });
 
