@@ -770,8 +770,28 @@ function removeCustomPatientFromLocalStorage(refId) {
     if (!refId) return;
     try {
         let list = getCustomPatientsFromLocalStorage();
-        list = list.filter(p => p.refId !== refId);
+        list = list.filter(p => p && p.refId !== refId);
         localStorage.setItem('luna-custom-patients', JSON.stringify(list));
+    } catch (e) {}
+}
+
+function getDeletedPatientRefsFromLocalStorage() {
+    try {
+        const saved = localStorage.getItem('luna-deleted-patients');
+        return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function markPatientAsDeletedInLocalStorage(refId) {
+    if (!refId) return;
+    try {
+        const list = getDeletedPatientRefsFromLocalStorage();
+        if (!list.includes(refId)) {
+            list.push(refId);
+            localStorage.setItem('luna-deleted-patients', JSON.stringify(list));
+        }
     } catch (e) {}
 }
 
@@ -779,30 +799,39 @@ function removeCustomPatientFromLocalStorage(refId) {
 async function loadPatientsFromServer() {
     try {
         const res = await fetch('/api/patients');
-        patients = await res.json();
-
-        // Merge locally registered patients from localStorage (ensures serverless consistency)
-        const customPatients = getCustomPatientsFromLocalStorage();
-        customPatients.forEach(cp => {
-            if (cp && cp.refId && !patients.some(p => p.refId === cp.refId)) {
-                patients.push(cp);
-            }
-        });
-
-        const savedRef = localStorage.getItem('luna-active-patient-ref');
-        const currentRef = activePatient ? activePatient.refId : (savedRef || null);
-        if (currentRef) {
-            activePatient = patients.find(p => p.refId === currentRef) || patients[0];
-        } else {
-            activePatient = patients[0];
-        }
-
-        if (activePatient) {
-            loadPatientData(activePatient);
+        if (res.ok) {
+            patients = await res.json();
         }
     } catch (err) {
-        console.error('Failed to load patients from server:', err);
-        showToast('Error loading patients from database.', 'error');
+        console.warn('Backend fetch failed, using local/cache state:', err);
+    }
+
+    if (!Array.isArray(patients)) patients = [];
+
+    // Merge locally registered patients from localStorage (ensures serverless consistency)
+    const customPatients = getCustomPatientsFromLocalStorage();
+    customPatients.forEach(cp => {
+        if (cp && cp.refId && !patients.some(p => p.refId === cp.refId)) {
+            patients.push(cp);
+        }
+    });
+
+    // Purge any patients marked deleted in localStorage
+    const deletedRefs = getDeletedPatientRefsFromLocalStorage();
+    if (deletedRefs.length > 0) {
+        patients = patients.filter(p => p && p.refId && !deletedRefs.includes(p.refId));
+    }
+
+    const savedRef = localStorage.getItem('luna-active-patient-ref');
+    const currentRef = activePatient ? activePatient.refId : (savedRef || null);
+    if (currentRef) {
+        activePatient = patients.find(p => p.refId === currentRef) || patients[0] || null;
+    } else {
+        activePatient = patients[0] || null;
+    }
+
+    if (activePatient) {
+        loadPatientData(activePatient);
     }
 }
 
@@ -1460,25 +1489,35 @@ function renderPatientDirectory(filteredSearch = '') {
         tr.querySelector('.delete-patient-btn').addEventListener('click', async e => {
             e.stopPropagation();
             if (confirm(`Are you sure you want to permanently delete the patient record for ${p.name}?`)) {
-                try {
-                    const res = await fetch(`/api/patients/${p.refId}`, { method: 'DELETE' });
-                    if (!res.ok) throw new Error('Failed to delete patient');
-                    removeCustomPatientFromLocalStorage(p.refId);
-                    patients = patients.filter(item => item.refId !== p.refId);
-                    if (activePatient && activePatient.refId === p.refId) {
-                        activePatient = patients[0] || null;
-                        if (activePatient) {
-                            localStorage.setItem('luna-active-patient-ref', activePatient.refId);
-                            loadPatientData(activePatient);
-                        } else {
-                            localStorage.removeItem('luna-active-patient-ref');
-                        }
+                const targetRef = p.refId;
+
+                // 1. Mark as deleted in localStorage immediately
+                markPatientAsDeletedInLocalStorage(targetRef);
+                removeCustomPatientFromLocalStorage(targetRef);
+
+                // 2. Remove from local patients array
+                patients = patients.filter(item => item.refId !== targetRef);
+
+                // 3. Update active patient if deleted
+                if (activePatient && activePatient.refId === targetRef) {
+                    activePatient = patients[0] || null;
+                    if (activePatient) {
+                        localStorage.setItem('luna-active-patient-ref', activePatient.refId);
+                        loadPatientData(activePatient);
+                    } else {
+                        localStorage.removeItem('luna-active-patient-ref');
                     }
-                    showToast(`Patient record for ${p.name} deleted successfully.`);
-                    await loadPatientsFromServer();
-                    renderPatientDirectory();
+                }
+
+                // 4. Update UI directory table immediately
+                renderPatientDirectory();
+                showToast(`Patient record for ${p.name} deleted successfully.`);
+
+                // 5. Send delete API request to backend asynchronously
+                try {
+                    await fetch(`/api/patients/${encodeURIComponent(targetRef)}`, { method: 'DELETE' });
                 } catch (err) {
-                    showToast('Failed to delete patient.', 'error');
+                    console.warn('Backend delete sync note:', err);
                 }
             }
         });

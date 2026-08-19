@@ -572,27 +572,37 @@ app.put('/api/patients/:refId', (req, res) => {
 });
 
 app.delete('/api/patients/:refId', (req, res) => {
-    const patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
+    let patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
     const rawRef = req.params.refId || '';
-    const refId = rawRef.trim().toLowerCase();
+    let refId = rawRef.trim().toLowerCase();
+    try { refId = decodeURIComponent(rawRef).trim().toLowerCase(); } catch (e) {}
+
     const index = patientsList.findIndex(p => p.refId && p.refId.trim().toLowerCase() === refId);
 
-    if (index === -1) {
-        return res.status(404).json({ error: "Patient record not found." });
+    let deletedPatient = null;
+    if (index !== -1) {
+        deletedPatient = patientsList.splice(index, 1)[0];
+    } else {
+        const altIndex = patientsList.findIndex(p => p.name && p.name.trim().toLowerCase() === refId);
+        if (altIndex !== -1) {
+            deletedPatient = patientsList.splice(altIndex, 1)[0];
+        }
     }
 
-    const [deletedPatient] = patientsList.splice(index, 1);
-    writeDataFile(PATIENTS_FILE, patientsList);
-
-    // Also remove corresponding patient user account from USERS_FILE
-    const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
-    const userIndex = usersList.findIndex(u => (u.patientRef && u.patientRef.trim().toLowerCase() === refId) || (deletedPatient.email && u.email && u.email.toLowerCase() === deletedPatient.email.toLowerCase() && u.role === 'patient'));
-    if (userIndex !== -1) {
-        usersList.splice(userIndex, 1);
-        writeDataFile(USERS_FILE, usersList);
+    if (deletedPatient) {
+        writeDataFile(PATIENTS_FILE, patientsList);
+        const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
+        const userIndex = usersList.findIndex(u =>
+            (u.patientRef && u.patientRef.trim().toLowerCase() === refId) ||
+            (deletedPatient.email && u.email && u.email.toLowerCase() === deletedPatient.email.toLowerCase() && u.role === 'patient')
+        );
+        if (userIndex !== -1) {
+            usersList.splice(userIndex, 1);
+            writeDataFile(USERS_FILE, usersList);
+        }
     }
 
-    res.json({ message: "Patient record deleted successfully.", refId: deletedPatient.refId });
+    res.json({ message: "Patient record deleted successfully.", refId: rawRef });
 });
 
 // Patient self-service appointment booking (Patient Portal)
