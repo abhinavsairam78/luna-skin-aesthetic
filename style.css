@@ -256,8 +256,21 @@ header.app-header .logo-area {
     transition: transform var(--transition-speed) var(--transition-ease), color var(--transition-speed) var(--transition-ease);
 }
 
-.brand-logo-container:hover .brand-logo-svg {
-    transform: rotate(5deg) scale(1.05);
+.brand-logo-img {
+    height: 40px;
+    width: auto;
+    max-width: 44px;
+    object-fit: contain;
+    flex-shrink: 0;
+    transition: transform var(--transition-speed) var(--transition-ease), filter var(--transition-speed) var(--transition-ease);
+}
+
+.brand-logo-container:hover .brand-logo-img {
+    transform: rotate(5deg) scale(1.06);
+}
+
+[data-theme="dark"] .brand-logo-img {
+    filter: brightness(0) invert(0.95) drop-shadow(0 2px 8px rgba(255,255,255,0.2));
 }
 
 .brand-logo-svg .logo-outline {
