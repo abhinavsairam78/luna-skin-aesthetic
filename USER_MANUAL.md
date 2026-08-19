@@ -32,8 +32,8 @@ Welcome to the official operating manual for **Luna Skin Aesthetics** (`lunaskin
 ---
 
 ### 1.2 Managing Patient Roster (Patient Directory)
-1. After logging in, click **Patient List** on the top navigation bar.
-2. Search any patient by **Name**, **Ref ID** (e.g. `LSA-2026-61201`), or **Primary Concern** using the search bar.
+1. Upon logging in, the Specialist Portal navigates directly to the **Patient Directory** by default, displaying the full list of registered clients on-screen.
+2. Search any patient by **Name**, **Ref ID / Client ID** (e.g. `LSA-2026-61201`), **Mail ID (Email)**, or **Primary Concern** using the search bar.
 3. Actions available for each patient:
    - **Open Case Sheet**: Loads the patient's comprehensive medical file.
    - **Delete**: Permanently removes the patient record and login account.
@@ -41,16 +41,21 @@ Welcome to the official operating manual for **Luna Skin Aesthetics** (`lunaskin
 ---
 
 ### 1.3 Creating a New Patient Record
-1. Click **+ CREATE PATIENT RECORD** in the Patient Directory or **+ New Patient** button.
-2. Fill in:
-   - **Full Name**
+1. Click **Create Patient Record** in the Patient Directory header or modal button.
+2. Fill in the client information:
+   - **Full Name** (Required)
+   - **Email Address / Mail ID** (Required for Patient Portal access, e.g. `patient@example.com`)
    - **Age** (e.g. `28`)
    - **Gender** (Female / Male / Other)
    - **Contact Number**
    - **Skin Type** (Normal, Dry, Oily, Combination, Sensitive)
    - **Primary Concern** (e.g. *Post-Inflammatory Hyperpigmentation*)
    - **Known Allergies**
-3. Click **Save Record**. The new patient is automatically assigned under **Dr. Krithika SK** and generated a unique Reference ID (`LSA-YYYY-XXXXX`).
+3. Click **Create Patient Record**.
+4. The system automatically:
+   - Assigns a unique **Client ID (Ref ID)** (e.g., `LSA-2026-92104`).
+   - Automatically provisions a **Patient Portal login account** using their specified Mail ID (default password: `password123`).
+   - Opens their new Case Sheet immediately for consultation entry.
 
 ---
 

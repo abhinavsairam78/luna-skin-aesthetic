@@ -49,5 +49,29 @@
     "password": "password123",
     "role": "patient",
     "patientRef": "LSA-2026-61201"
+  },
+  {
+    "id": "patient-farook-001",
+    "name": "Farook Al-Aziz",
+    "email": "farook@example.com",
+    "password": "password123",
+    "role": "patient",
+    "patientRef": "LSA-2024-00892"
+  },
+  {
+    "id": "patient-elena-001",
+    "name": "Elena Rostova",
+    "email": "elena@example.com",
+    "password": "password123",
+    "role": "patient",
+    "patientRef": "LSA-2024-00781"
+  },
+  {
+    "id": "patient-marcus-001",
+    "name": "Marcus Vance",
+    "email": "marcus@example.com",
+    "password": "password123",
+    "role": "patient",
+    "patientRef": "LSA-2024-00910"
   }
 ]

@@ -716,6 +716,10 @@ async function initDoctorPortal(session) {
     await loadPatientsFromServer();
     await loadAllAppointments();
     await loadNotifications();
+
+    // Default to Patient List view on entry unless a specific tab was previously selected
+    const savedTab = localStorage.getItem('luna-active-tab') || 'patientList';
+    switchToTab(savedTab);
 }
 
 function getCustomPatientsFromLocalStorage() {
@@ -738,6 +742,15 @@ function saveCustomPatientToLocalStorage(patientRecord) {
     } catch (e) {}
 }
 
+function removeCustomPatientFromLocalStorage(refId) {
+    if (!refId) return;
+    try {
+        let list = getCustomPatientsFromLocalStorage();
+        list = list.filter(p => p.refId !== refId);
+        localStorage.setItem('luna-custom-patients', JSON.stringify(list));
+    } catch (e) {}
+}
+
 // Patient Database loading
 async function loadPatientsFromServer() {
     try {
@@ -752,7 +765,8 @@ async function loadPatientsFromServer() {
             }
         });
 
-        const currentRef = activePatient ? activePatient.refId : null;
+        const savedRef = localStorage.getItem('luna-active-patient-ref');
+        const currentRef = activePatient ? activePatient.refId : (savedRef || null);
         if (currentRef) {
             activePatient = patients.find(p => p.refId === currentRef) || patients[0];
         } else {
@@ -850,6 +864,9 @@ function triggerAutosave() {
 // ─── LOAD PATIENT DATA INTO FORM ──────────────────────────────
 function loadPatientData(patient) {
     activePatient = patient;
+    if (patient.refId) {
+        localStorage.setItem('luna-active-patient-ref', patient.refId);
+    }
 
     document.getElementById('patient-banner-title').textContent = `Case Sheet: ${patient.name}`;
     document.getElementById('patient-banner-ref').textContent = `Ref ID: ${patient.refId}`;
@@ -858,7 +875,9 @@ function loadPatientData(patient) {
     bannerStatus.textContent = patient.status;
     bannerStatus.className = patient.status?.toLowerCase() === 'active' ? 'status-badge' : 'status-badge inactive';
 
+    if (document.getElementById('patient-refid')) document.getElementById('patient-refid').value = patient.refId || '';
     document.getElementById('patient-name').value = patient.name || '';
+    if (document.getElementById('patient-email')) document.getElementById('patient-email').value = patient.email || '';
     document.getElementById('patient-age').value = patient.age || '';
     document.getElementById('patient-gender').value = patient.gender || '';
     document.getElementById('patient-contact').value = patient.contact || '';
@@ -925,6 +944,7 @@ function loadPatientData(patient) {
 function saveCurrentInputsToMemory() {
     if (!activePatient) return;
     activePatient.name = document.getElementById('patient-name').value;
+    if (document.getElementById('patient-email')) activePatient.email = document.getElementById('patient-email').value.trim();
     activePatient.age = document.getElementById('patient-age').value;
     activePatient.gender = document.getElementById('patient-gender').value;
     activePatient.contact = document.getElementById('patient-contact').value;
@@ -944,7 +964,7 @@ function saveCurrentInputsToMemory() {
 
 function lockInputsState(isLocked) {
     const elementsToLock = [
-        'patient-name', 'patient-age', 'patient-gender', 'patient-contact',
+        'patient-name', 'patient-email', 'patient-age', 'patient-gender', 'patient-contact',
         'patient-allergies', 'patient-medications', 'patient-routine',
         'patient-skintype', 'patient-concern', 'practitioner-notes',
         'upload-before-date', 'upload-after-date'
@@ -1319,6 +1339,7 @@ document.getElementById('photo-mode-side')?.addEventListener('click', () => {
 
 // ─── TAB NAVIGATION (Doctor Portal) ──────────────────────────
 function switchToTab(tabName) {
+    localStorage.setItem('luna-active-tab', tabName);
     const tabs = {
         caseSheets: document.getElementById('tab-case-sheets'),
         patientList: document.getElementById('tab-patient-list')
@@ -1365,11 +1386,12 @@ function renderPatientDirectory(filteredSearch = '') {
     const filtered = patients.filter(p =>
         p.name.toLowerCase().includes(searchLow) ||
         p.refId.toLowerCase().includes(searchLow) ||
+        (p.email || '').toLowerCase().includes(searchLow) ||
         p.concern.toLowerCase().includes(searchLow)
     );
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-secondary" style="text-align:center;padding:32px;font-style:italic;">No patient records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-secondary" style="text-align:center;padding:32px;font-style:italic;">No patient records found</td></tr>';
         return;
     }
 
@@ -1385,6 +1407,7 @@ function renderPatientDirectory(filteredSearch = '') {
         tr.innerHTML = `
             <td style="font-weight:700;color:var(--color-primary);font-family:monospace;">${p.refId}</td>
             <td style="font-weight:600;">${p.name}</td>
+            <td style="font-size:12px;color:var(--color-secondary);">${p.email || '—'}</td>
             <td>${ageDisplay}</td>
             <td>${p.gender || '—'}</td>
             <td>${p.concern || '—'}</td>
@@ -1409,6 +1432,17 @@ function renderPatientDirectory(filteredSearch = '') {
                 try {
                     const res = await fetch(`/api/patients/${p.refId}`, { method: 'DELETE' });
                     if (!res.ok) throw new Error('Failed to delete patient');
+                    removeCustomPatientFromLocalStorage(p.refId);
+                    patients = patients.filter(item => item.refId !== p.refId);
+                    if (activePatient && activePatient.refId === p.refId) {
+                        activePatient = patients[0] || null;
+                        if (activePatient) {
+                            localStorage.setItem('luna-active-patient-ref', activePatient.refId);
+                            loadPatientData(activePatient);
+                        } else {
+                            localStorage.removeItem('luna-active-patient-ref');
+                        }
+                    }
                     showToast(`Patient record for ${p.name} deleted successfully.`);
                     await loadPatientsFromServer();
                     renderPatientDirectory();
@@ -1762,14 +1796,16 @@ document.getElementById('save-case-sheet-btn')?.addEventListener('click', async 
 
 // ─── CREATE NEW PATIENT MODAL ─────────────────────────────────
 document.getElementById('btn-add-patient')?.addEventListener('click', () => {
-    ['np-name', 'np-allergies'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('np-age').value = '';
-    document.getElementById('np-contact').value = '';
+    ['np-name', 'np-email', 'np-allergies', 'np-contact', 'np-age', 'np-concern'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
     openModal('new-patient-modal');
 });
 
 document.getElementById('new-p-save-btn')?.addEventListener('click', async () => {
     const name = document.getElementById('np-name').value.trim();
+    const email = (document.getElementById('np-email')?.value || '').trim();
     const age = document.getElementById('np-age').value;
     const gender = document.getElementById('np-gender').value;
     const contact = document.getElementById('np-contact').value.trim();
@@ -1784,7 +1820,7 @@ document.getElementById('new-p-save-btn')?.addEventListener('click', async () =>
     const refId = `LSA-${year}-${randCode}`;
 
     const newPatient = {
-        refId, name, age: parseInt(age) || 0, gender, contact, allergies,
+        refId, name, email: email.toLowerCase(), age: parseInt(age) || 0, gender, contact, allergies,
         medications: '', skintype, concern: concern || 'Initial Consultation',
         routine: '', observations: '', protocol: '', status: 'Active',
         signed: false, signatureId: '', beforeDate: '', afterDate: '',
@@ -1802,11 +1838,12 @@ document.getElementById('new-p-save-btn')?.addEventListener('click', async () =>
         });
         if (!res.ok) throw new Error('Failed to create patient');
         const created = await res.json();
+        saveCustomPatientToLocalStorage(created);
         await loadPatientsFromServer();
         loadPatientData(created);
         switchToTab('caseSheets');
         closeModal('new-patient-modal');
-        showToast(`Patient record created for ${name}. Ref: ${refId}`);
+        showToast(`Patient record created for ${name}. Ref: ${created.refId}`);
     } catch (err) {
         showToast('Failed to create patient record.', 'error');
     }
@@ -1980,7 +2017,7 @@ document.getElementById('notif-clear-btn')?.addEventListener('click', () => {
 });
 
 // ─── AUTOSAVE INPUT LISTENERS ─────────────────────────────────
-['patient-name', 'patient-age', 'patient-gender', 'patient-contact',
+['patient-name', 'patient-email', 'patient-age', 'patient-gender', 'patient-contact',
  'patient-allergies', 'patient-medications', 'patient-routine',
  'patient-skintype', 'patient-concern', 'practitioner-notes'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', triggerAutosave);
@@ -1988,6 +2025,13 @@ document.getElementById('notif-clear-btn')?.addEventListener('click', () => {
 
 document.querySelectorAll('#concerns-checklist input[type="checkbox"]').forEach(chk => {
     chk.addEventListener('change', triggerAutosave);
+});
+
+window.addEventListener('beforeunload', () => {
+    if (activePatient) {
+        saveCurrentInputsToMemory();
+        saveCustomPatientToLocalStorage(activePatient);
+    }
 });
 
 // ─── IMAGE UPLOAD HANDLERS ────────────────────────────────────

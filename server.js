@@ -220,45 +220,6 @@ const INITIAL_USERS = [
 
 const memoryCache = {};
 
-function readDataFile(filename, fallback) {
-    let data = null;
-
-    // 1. Read dynamic writable DATA_DIR
-    const writablePath = path.join(DATA_DIR, filename);
-    if (fs.existsSync(writablePath)) {
-        try {
-            data = JSON.parse(fs.readFileSync(writablePath, 'utf8'));
-        } catch (err) {
-            console.error(`Error reading ${writablePath}:`, err);
-        }
-    }
-
-    // 2. Read and merge bundled data dir (__dirname/data/filename)
-    const bundledPath = path.join(__dirname, 'data', filename);
-    if (fs.existsSync(bundledPath)) {
-        try {
-            const bundledData = JSON.parse(fs.readFileSync(bundledPath, 'utf8'));
-            if (Array.isArray(bundledData) && Array.isArray(data)) {
-                const key = filename === 'users.json' ? 'id' : 'refId';
-                const existingKeys = new Set(data.map(item => item[key]));
-                bundledData.forEach(item => {
-                    if (item[key] && !existingKeys.has(item[key])) {
-                        data.push(item);
-                        existingKeys.add(item[key]);
-                    }
-                });
-            } else if (!data) {
-                data = bundledData;
-            }
-        } catch (err) {
-            console.error(`Error reading bundled file ${bundledPath}:`, err);
-        }
-    }
-
-    if (!data) {
-        data = memoryCache[filename] || fallback;
-    }
-
 function sanitizeAge(val, dob) {
     if (dob) {
         const birthDate = new Date(dob);
@@ -280,6 +241,35 @@ function sanitizeAge(val, dob) {
 
     return 28;
 }
+
+function readDataFile(filename, fallback) {
+    let data = null;
+
+    // 1. Read dynamic writable DATA_DIR
+    const writablePath = path.join(DATA_DIR, filename);
+    if (fs.existsSync(writablePath)) {
+        try {
+            data = JSON.parse(fs.readFileSync(writablePath, 'utf8'));
+        } catch (err) {
+            console.error(`Error reading ${writablePath}:`, err);
+        }
+    }
+
+    // 2. Read bundled data dir if writable file does not exist
+    if (!data) {
+        const bundledPath = path.join(__dirname, 'data', filename);
+        if (fs.existsSync(bundledPath)) {
+            try {
+                data = JSON.parse(fs.readFileSync(bundledPath, 'utf8'));
+            } catch (err) {
+                console.error(`Error reading bundled file ${bundledPath}:`, err);
+            }
+        }
+    }
+
+    if (!data) {
+        data = memoryCache[filename] || fallback;
+    }
 
     // Ensure all patients are assigned to Dr. Krithika SK and have sanitized valid ages
     if (filename === 'patients.json' && Array.isArray(data)) {
@@ -497,11 +487,17 @@ app.post('/api/patients', (req, res) => {
     const patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
     const newPatient = req.body;
 
-    if (!newPatient.refId) {
-        const randCode = Math.floor(100 + Math.random() * 900);
-        newPatient.refId = `LSA-${new Date().getFullYear()}-00${randCode}`;
+    if (!newPatient.name) {
+        return res.status(400).json({ error: "Patient name is required." });
     }
 
+    if (!newPatient.refId) {
+        const year = new Date().getFullYear();
+        const randCode = Math.floor(10000 + Math.random() * 90000);
+        newPatient.refId = `LSA-${year}-${randCode}`;
+    }
+
+    newPatient.email = (newPatient.email || '').toLowerCase().trim();
     newPatient.procedures = newPatient.procedures || [];
     newPatient.logs = newPatient.logs || [];
     newPatient.skincare = newPatient.skincare || [];
@@ -515,6 +511,25 @@ app.post('/api/patients', (req, res) => {
 
     patientsList.push(newPatient);
     writeDataFile(PATIENTS_FILE, patientsList);
+
+    // Auto-create matching patient user account if email is provided and doesn't exist
+    if (newPatient.email) {
+        const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
+        const existingUser = usersList.find(u => u.email.toLowerCase() === newPatient.email.toLowerCase());
+        if (!existingUser) {
+            const newUser = {
+                id: `patient-${Date.now()}`,
+                name: newPatient.name,
+                email: newPatient.email.toLowerCase(),
+                password: 'password123',
+                role: 'patient',
+                patientRef: newPatient.refId
+            };
+            usersList.push(newUser);
+            writeDataFile(USERS_FILE, usersList);
+        }
+    }
+
     res.status(201).json(newPatient);
 });
 
@@ -541,8 +556,17 @@ app.delete('/api/patients/:refId', (req, res) => {
         return res.status(404).json({ error: "Patient record not found." });
     }
 
-    patientsList.splice(index, 1);
+    const [deletedPatient] = patientsList.splice(index, 1);
     writeDataFile(PATIENTS_FILE, patientsList);
+
+    // Also remove corresponding patient user account from USERS_FILE
+    const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
+    const userIndex = usersList.findIndex(u => u.patientRef === refId || (deletedPatient.email && u.email.toLowerCase() === deletedPatient.email.toLowerCase() && u.role === 'patient'));
+    if (userIndex !== -1) {
+        usersList.splice(userIndex, 1);
+        writeDataFile(USERS_FILE, usersList);
+    }
+
     res.json({ message: "Patient record deleted successfully.", refId });
 });
 

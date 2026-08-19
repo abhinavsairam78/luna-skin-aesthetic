@@ -1074,8 +1074,20 @@
                             <h3 class="card-title">I. Personal Details</h3>
                             <div class="grid-2">
                                 <div class="form-group">
+                                    <label class="label-clinical">Client ID (Ref ID)</label>
+                                    <input class="input-clinical font-body-md" id="patient-refid" type="text" readonly style="font-family:monospace;background:var(--color-surface-container-low);"/>
+                                </div>
+                                <div class="form-group">
                                     <label class="label-clinical">Full Name</label>
                                     <input class="input-clinical font-body-md" id="patient-name" type="text"/>
+                                </div>
+                                <div class="form-group">
+                                    <label class="label-clinical">Email Address (Mail ID)</label>
+                                    <input class="input-clinical font-body-md" id="patient-email" type="email" placeholder="patient@example.com"/>
+                                </div>
+                                <div class="form-group">
+                                    <label class="label-clinical">Contact Number</label>
+                                    <input class="input-clinical font-body-md" id="patient-contact" type="text"/>
                                 </div>
                                 <div class="form-group">
                                     <label class="label-clinical">Age</label>
@@ -1084,10 +1096,6 @@
                                 <div class="form-group">
                                     <label class="label-clinical">Gender</label>
                                     <input class="input-clinical font-body-md" id="patient-gender" type="text"/>
-                                </div>
-                                <div class="form-group">
-                                    <label class="label-clinical">Contact Number</label>
-                                    <input class="input-clinical font-body-md" id="patient-contact" type="text"/>
                                 </div>
                             </div>
                         </div>
@@ -1395,6 +1403,7 @@
                                     <tr>
                                         <th>Ref ID</th>
                                         <th>Patient Name</th>
+                                        <th>Mail ID</th>
                                         <th>Age</th>
                                         <th>Gender</th>
                                         <th>Primary Concern</th>
@@ -1636,11 +1645,15 @@
             <div class="grid-2" style="gap:16px;">
                 <div class="form-group" style="margin-bottom:16px;">
                     <label class="label-clinical">Full Name</label>
-                    <input class="input-clinical font-body-md" id="np-name" type="text" required/>
+                    <input class="input-clinical font-body-md" id="np-name" type="text" required placeholder="Patient full name"/>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="label-clinical">Email Address (Mail ID)</label>
+                    <input class="input-clinical font-body-md" id="np-email" type="email" placeholder="patient@example.com"/>
                 </div>
                 <div class="form-group" style="margin-bottom:16px;">
                     <label class="label-clinical">Age</label>
-                    <input class="input-clinical font-body-md" id="np-age" type="number" min="0"/>
+                    <input class="input-clinical font-body-md" id="np-age" type="number" min="0" placeholder="e.g. 30"/>
                 </div>
                 <div class="form-group" style="margin-bottom:16px;">
                     <label class="label-clinical">Gender</label>
@@ -1652,7 +1665,7 @@
                 </div>
                 <div class="form-group" style="margin-bottom:16px;">
                     <label class="label-clinical">Contact Number</label>
-                    <input class="input-clinical font-body-md" id="np-contact" type="tel"/>
+                    <input class="input-clinical font-body-md" id="np-contact" type="tel" placeholder="+91 / +971..."/>
                 </div>
                 <div class="form-group" style="margin-bottom:16px;">
                     <label class="label-clinical">Skin Type</label>
@@ -1666,12 +1679,12 @@
                 </div>
                 <div class="form-group" style="margin-bottom:16px;">
                     <label class="label-clinical">Primary Concern</label>
-                    <input class="input-clinical font-body-md" id="np-concern" type="text"/>
+                    <input class="input-clinical font-body-md" id="np-concern" type="text" placeholder="e.g. Hyperpigmentation"/>
                 </div>
             </div>
             <div class="form-group">
                 <label class="label-clinical">Known Allergies</label>
-                <input class="input-clinical font-body-md" id="np-allergies" type="text"/>
+                <input class="input-clinical font-body-md" id="np-allergies" type="text" placeholder="e.g. None or Salicylic Acid"/>
             </div>
         </div>
         <div class="modal-footer">
