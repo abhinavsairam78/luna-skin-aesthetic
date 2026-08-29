@@ -19,5 +19,26 @@
     "type": "email",
     "timestamp": "2026-07-17T07:40:20.644Z",
     "read": false
+  },
+  {
+    "id": "notif-1788002972174-948",
+    "message": "New appointment booked by Farook Al-Aziz on 2026-09-20 at 11:45 AM (HydraFacial Deluxe (Booked by Patient))",
+    "type": "appointment",
+    "timestamp": "2026-08-29T11:29:32.178Z",
+    "read": false
+  },
+  {
+    "id": "notif-1788002972232-972",
+    "message": "SMS alert sent to Clinic at +91 90256 76090",
+    "type": "sms",
+    "timestamp": "2026-08-29T11:29:32.232Z",
+    "read": false
+  },
+  {
+    "id": "notif-1788002972245-979",
+    "message": "Email & Calendar update sent to lunaskinaesthetics24@gmail.com",
+    "type": "email",
+    "timestamp": "2026-08-29T11:29:32.245Z",
+    "read": false
   }
 ]

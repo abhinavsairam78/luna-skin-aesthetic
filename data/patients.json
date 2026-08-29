@@ -11,7 +11,7 @@
     "skintype": "Combination",
     "concern": "Post-Inflammatory Hyperpigmentation",
     "routine": "Morning:\n1. Gentle Cleanser\n2. Hyaluronic Acid Serum\n3. Vitamin C (10%)\n4. Mineral Sunscreen SPF 50\n\nEvening:\n1. Oil Cleanser\n2. Hydrating Cleanser\n3. Niacinamide Serum (5%)\n4. Ceramide Cream",
-    "observations": "Client presents with localized PIH around the chin area. Skin barrier appears compromised in the perioral region. Recommended immediate cessation of physical exfoliants and initiation of ceramide-rich barrier repair. Subsequent sessions will focus on pigmentation correction once barrier is stabilized.",
+    "observations": "Client presents with localized PIH around the chin area. Skin barrier appears compromised in the perioral region. Recommended immediate cessation of physical exfoliants and initiation of ceramide-rich barrier repair.",
     "protocol": "3-Month Corrective Plan:\nPhase 1 (Barrier Repair) 2-4 weeks.\nPhase 2 (Pigmentation Attack) with Advanced Cosmetic Chemical Exfoliation.\nPhase 3 (Maintenance) with SPF 50+ and Vitamin C infusion.",
     "status": "Active",
     "signed": true,
@@ -70,16 +70,15 @@
       "dehydration": true
     },
     "appointment": {
-      "date": "2024-06-12",
+      "date": "2026-07-15",
       "time": "10:30 AM",
       "purpose": "Chemical Peel Follow-up"
-    },
-    "assignedDoctor": "Dr. Krithika SK"
+    }
   },
   {
     "refId": "LSA-2024-00781",
     "name": "Elena Rostova",
-    "age": "29",
+    "age": 29,
     "gender": "Female",
     "contact": "+971 52 987 6543",
     "email": "elena@example.com",
@@ -88,11 +87,11 @@
     "skintype": "Sensitive",
     "concern": "Acne Grade 2-3 & Dehydration",
     "routine": "Morning:\n1. Foaming Wash\n2. Clindamycin Gel\n3. Light Gel Moisturizer\n\nEvening:\n1. Micellar Water\n2. Foaming Wash\n3. Adapalene 0.1%\n4. Soothing Cream",
-    "observations": "Inflammatory papules and pustules on cheeks and jawline. Erythema present. Skin barrier shows moderate irritation from active topicals. Patient will focus strictly on soothing barrier repair for 14 days before initiating cosmetic treatments.",
+    "observations": "Inflammatory papules and pustules on cheeks and jawline. Erythema present. Skin barrier shows moderate irritation from active topicals.",
     "protocol": "Soothe & Clear Strategy:\nPhase 1: Hydrating Soothing Facials weekly + barrier support.\nPhase 2: LED Light Therapy (Blue/Red) to target acne bacteria.\nPhase 3: Mild Mandelic Acid peels for cell turnover.",
     "status": "Active",
-    "signed": true,
-    "signatureId": "#625-LUNA-SIG-20260701",
+    "signed": false,
+    "signatureId": "",
     "beforeDate": "April 10, 2024",
     "afterDate": "June 01, 2024",
     "beforeImg": "before_treatment.jpg",
@@ -106,16 +105,6 @@
       {
         "name": "Soothe & Hydrate Facial",
         "date": "2024-04-25",
-        "clinic": "Luna Skin Aesthetic"
-      },
-      {
-        "name": "Microdermabrasion",
-        "date": "60701-02-20",
-        "clinic": "Luna Skin AestheticLuna Skin Aesthetic"
-      },
-      {
-        "name": "Microdermabrasion",
-        "date": "2026-07-01",
         "clinic": "Luna Skin Aesthetic"
       }
     ],
@@ -143,11 +132,6 @@
         "name": "Barrier Balance Gel",
         "instructions": "Apply generously twice daily",
         "qty": 1
-      },
-      {
-        "name": "Luna Vitamin C Serum",
-        "instructions": "AM use",
-        "qty": 2
       }
     ],
     "concernsChecklist": {
@@ -157,11 +141,10 @@
       "dehydration": true
     },
     "appointment": {
-      "date": "2024-06-19",
+      "date": "2026-07-15",
       "time": "03:00 PM",
       "purpose": "LED Light Session"
-    },
-    "assignedDoctor": "Dr. Krithika SK"
+    }
   },
   {
     "refId": "LSA-2024-00910",
@@ -175,7 +158,7 @@
     "skintype": "Dry",
     "concern": "Loss of Elasticity & Fine Lines",
     "routine": "Morning:\n1. Water rinse\n2. Heavy Cream Moisturizer\n\nEvening:\n1. Clay Cleanser\n2. Rich Anti-aging Balm",
-    "observations": "Loss of dermal density, specifically mid-face and nasolabial folds. Fine lines and mild photo-damage on forehead. Prescribed collagen-boosting aesthetic protocol with microcurrent and RF skin tightening.",
+    "observations": "Loss of dermal density, specifically mid-face and nasolabial folds. Fine lines and mild photo-damage on forehead.",
     "protocol": "Sculpt & Firm Regimen:\nPhase 1: Radiofrequency (RF) Skin Tightening (4 sessions, bi-weekly).\nPhase 2: Microcurrent tone therapy.\nPhase 3: Hyaluronic Acid filler injection maintenance.",
     "status": "Inactive",
     "signed": false,
@@ -217,7 +200,7 @@
     ],
     "skincare": [
       {
-        "name": "Luminous Lift peptide Cream",
+        "name": "Luminous Lift Peptide Cream",
         "instructions": "Apply PM to face & neck",
         "qty": 1
       },
@@ -234,161 +217,9 @@
       "dehydration": false
     },
     "appointment": {
-      "date": "2024-06-26",
+      "date": "2026-07-22",
       "time": "11:45 AM",
       "purpose": "Maintenance Consultation"
-    },
-    "assignedDoctor": "Dr. Krithika SK"
-  },
-  {
-    "refId": "LSA-2026-16892",
-    "name": "Sarah Chen",
-    "age": 27,
-    "gender": "Female",
-    "contact": "+971 55 000 1234",
-    "email": "sarah@test.com",
-    "allergies": "",
-    "medications": "",
-    "skintype": "Normal",
-    "concern": "Initial Consultation",
-    "routine": "",
-    "observations": "",
-    "protocol": "",
-    "status": "Active",
-    "signed": false,
-    "signatureId": "",
-    "beforeDate": "",
-    "afterDate": "",
-    "beforeImg": "",
-    "afterImg": "",
-    "procedures": [],
-    "logs": [],
-    "skincare": [],
-    "concernsChecklist": {
-      "hyperpigmentation": false,
-      "acne": false,
-      "elasticity": false,
-      "dehydration": false
-    },
-    "appointment": {
-      "date": "2026-07-12",
-      "time": "10:30 AM",
-      "purpose": "Initial Consultation"
-    },
-    "assignedDoctor": "Dr. Krithika SK"
-  },
-  {
-    "refId": "LSA-2026-39960",
-    "name": "Jane Doe",
-    "age": 32,
-    "gender": "Not specified",
-    "contact": "+971 50 987 6543",
-    "email": "jane.doe@example.com",
-    "allergies": "",
-    "medications": "",
-    "skintype": "Normal",
-    "concern": "Initial Consultation",
-    "routine": "",
-    "observations": "",
-    "protocol": "",
-    "status": "Active",
-    "signed": true,
-    "signatureId": "#148-LUNA-SIG-20260715",
-    "beforeDate": "",
-    "afterDate": "",
-    "beforeImg": "",
-    "afterImg": "",
-    "procedures": [],
-    "logs": [],
-    "skincare": [
-      {
-        "name": "Retinol 0.5% Cream",
-        "instructions": "Apply a pea-sized amount to clean, dry skin in the evening, 2-3 times a week.",
-        "qty": 11
-      }
-    ],
-    "concernsChecklist": {
-      "hyperpigmentation": false,
-      "acne": false,
-      "elasticity": false,
-      "dehydration": false
-    },
-    "appointment": null,
-    "assignedDoctor": "Dr. Krithika SK"
-  },
-  {
-    "refId": "LSA-2026-26848",
-    "name": "Jane Smith",
-    "age": "31",
-    "gender": "Female",
-    "contact": "+971 50 123 4567",
-    "email": "jane.smith@example.com",
-    "allergies": "",
-    "medications": "",
-    "skintype": "Normal",
-    "concern": "Initial Consultation",
-    "routine": "",
-    "observations": "",
-    "protocol": "",
-    "status": "Active",
-    "signed": true,
-    "signatureId": "#731-LUNA-SIG-20260715",
-    "beforeDate": "",
-    "afterDate": "",
-    "beforeImg": "",
-    "afterImg": "",
-    "procedures": [],
-    "logs": [],
-    "skincare": [
-      {
-        "name": "Retinol 0.5% Cream",
-        "instructions": "Apply a pea-sized amount to clean, dry skin in the evening, 2-3 times a week.",
-        "qty": 1
-      }
-    ],
-    "concernsChecklist": {
-      "hyperpigmentation": false,
-      "acne": false,
-      "elasticity": false,
-      "dehydration": false
-    },
-    "appointment": null,
-    "assignedDoctor": "Dr. Krithika SK"
-  },
-  {
-    "refId": "LSA-2026-PRIYA",
-    "name": "Priya Sharma",
-    "age": 28,
-    "gender": "Female",
-    "contact": "+971 55 100 2030",
-    "email": "priya@patient.com",
-    "allergies": "None",
-    "medications": "None",
-    "skintype": "Normal",
-    "concern": "Initial Consultation",
-    "routine": "",
-    "observations": "",
-    "protocol": "",
-    "status": "Active",
-    "signed": false,
-    "signatureId": "",
-    "beforeDate": "",
-    "afterDate": "",
-    "beforeImg": "",
-    "afterImg": "",
-    "procedures": [],
-    "logs": [],
-    "skincare": [],
-    "concernsChecklist": {
-      "hyperpigmentation": false,
-      "acne": false,
-      "elasticity": false,
-      "dehydration": false
-    },
-    "appointment": {
-      "date": "2026-07-18",
-      "time": "09:00 AM",
-      "purpose": "Follow-up Consultation"
     },
     "assignedDoctor": "Dr. Krithika SK"
   },
