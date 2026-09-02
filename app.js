@@ -1393,6 +1393,43 @@ document.getElementById('photo-mode-side')?.addEventListener('click', () => {
 });
 
 // ─── TAB NAVIGATION (Doctor Portal) ──────────────────────────
+let currentSidebarFilter = 'all';
+
+function updateSidebarMetrics() {
+    const totalCount = patients.length;
+    const pendingCount = patients.filter(p => !p.signed).length;
+
+    // Today's appointments count
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayAppts = patients.filter(p => {
+        if (!p.appointment || !p.appointment.date) return false;
+        const parsed = parseApptDate(p.appointment.date);
+        return parsed && parsed.toISOString().slice(0, 10) === todayStr;
+    }).length;
+
+    const sbCountEl = document.getElementById('sb-patient-count');
+    const sbTotalEl = document.getElementById('sb-metric-total');
+    const sbApptsEl = document.getElementById('sb-metric-appts');
+    const sbPendingEl = document.getElementById('sb-metric-pending');
+
+    if (sbCountEl) sbCountEl.textContent = totalCount;
+    if (sbTotalEl) sbTotalEl.textContent = totalCount;
+    if (sbApptsEl) sbApptsEl.textContent = todayAppts;
+    if (sbPendingEl) sbPendingEl.textContent = pendingCount;
+}
+
+function filterDirectoryBySidebar(filter) {
+    currentSidebarFilter = filter;
+    ['all', 'active', 'inactive'].forEach(f => {
+        const btn = document.getElementById(`sb-filter-${f}`);
+        if (btn) btn.classList.toggle('active', f === filter);
+    });
+
+    const searchInput = document.getElementById('patient-search-bar');
+    const searchTerm = searchInput ? searchInput.value : '';
+    renderPatientDirectory(searchTerm);
+}
+
 function switchToTab(tabName) {
     localStorage.setItem('luna-active-tab', tabName);
     const tabs = {
@@ -1403,13 +1440,25 @@ function switchToTab(tabName) {
         caseSheet: document.getElementById('case-sheet-view'),
         patientList: document.getElementById('patient-list-view')
     };
+    const sbDirectory = document.getElementById('sidebar-nav-directory');
+    const sbCaseSheet = document.getElementById('sidebar-nav-casesheet');
+    const sbCaseSections = document.getElementById('sidebar-casesheet-sections');
+    const sbDirFilters = document.getElementById('sidebar-directory-filters');
+    const sidebarNav = document.getElementById('sidebar-nav');
+
+    // Ensure sidebar is always flex layout in desktop Doctor Portal view
+    if (sidebarNav) sidebarNav.style.display = 'flex';
 
     if (tabName === 'caseSheets') {
-        tabs.caseSheets.classList.add('active');
-        tabs.patientList.classList.remove('active');
-        views.caseSheet.style.display = 'block';
-        views.patientList.style.display = 'none';
-        document.getElementById('sidebar-nav').style.display = 'flex';
+        if (tabs.caseSheets) tabs.caseSheets.classList.add('active');
+        if (tabs.patientList) tabs.patientList.classList.remove('active');
+        if (views.caseSheet) views.caseSheet.style.display = 'block';
+        if (views.patientList) views.patientList.style.display = 'none';
+
+        if (sbCaseSheet) sbCaseSheet.classList.add('active');
+        if (sbDirectory) sbDirectory.classList.remove('active');
+        if (sbCaseSections) sbCaseSections.style.display = 'block';
+        if (sbDirFilters) sbDirFilters.style.display = 'none';
 
         setTimeout(() => {
             if (sliderContainer) {
@@ -1419,13 +1468,22 @@ function switchToTab(tabName) {
             }
         }, 50);
     } else {
-        tabs.patientList.classList.add('active');
-        tabs.caseSheets.classList.remove('active');
-        views.caseSheet.style.display = 'none';
-        views.patientList.style.display = 'block';
-        document.getElementById('sidebar-nav').style.display = 'none';
-        loadPatientsFromServer().then(() => renderPatientDirectory());
+        if (tabs.patientList) tabs.patientList.classList.add('active');
+        if (tabs.caseSheets) tabs.caseSheets.classList.remove('active');
+        if (views.caseSheet) views.caseSheet.style.display = 'none';
+        if (views.patientList) views.patientList.style.display = 'block';
+
+        if (sbDirectory) sbDirectory.classList.add('active');
+        if (sbCaseSheet) sbCaseSheet.classList.remove('active');
+        if (sbCaseSections) sbCaseSections.style.display = 'none';
+        if (sbDirFilters) sbDirFilters.style.display = 'block';
+
+        loadPatientsFromServer().then(() => {
+            renderPatientDirectory();
+            updateSidebarMetrics();
+        });
     }
+    updateSidebarMetrics();
 }
 
 document.getElementById('tab-case-sheets')?.addEventListener('click', () => switchToTab('caseSheets'));
@@ -1438,12 +1496,20 @@ function renderPatientDirectory(filteredSearch = '') {
     tbody.innerHTML = '';
 
     const searchLow = filteredSearch.toLowerCase().trim();
-    const filtered = patients.filter(p =>
-        p.name.toLowerCase().includes(searchLow) ||
-        p.refId.toLowerCase().includes(searchLow) ||
-        (p.email || '').toLowerCase().includes(searchLow) ||
-        p.concern.toLowerCase().includes(searchLow)
-    );
+    const filtered = patients.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchLow) ||
+            p.refId.toLowerCase().includes(searchLow) ||
+            (p.email || '').toLowerCase().includes(searchLow) ||
+            (p.concern || '').toLowerCase().includes(searchLow);
+        
+        let matchesStatus = true;
+        if (currentSidebarFilter === 'active') {
+            matchesStatus = (p.status || 'Active').toLowerCase() === 'active';
+        } else if (currentSidebarFilter === 'inactive') {
+            matchesStatus = (p.status || 'Active').toLowerCase() === 'inactive';
+        }
+        return matchesSearch && matchesStatus;
+    });
 
     if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" class="text-secondary" style="text-align:center;padding:32px;font-style:italic;">No patient records found</td></tr>';
@@ -1648,6 +1714,8 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay.active').forEach(m => closeModal(m.id));
+        document.querySelectorAll('.portal-sidebar.mobile-active, .sidebar-nav.mobile-active').forEach(sb => sb.classList.remove('mobile-active'));
+        document.getElementById('mobile-sidebar-overlay')?.classList.remove('active');
     }
 });
 
