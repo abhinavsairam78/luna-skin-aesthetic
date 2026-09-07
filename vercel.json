@@ -10,7 +10,11 @@
   },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/(.*)",
+      "destination": "/server.js"
+    },
+    {
+      "source": "/((?!.*\\.(css|js|png|jpg|jpeg|svg|gif|ico|json|pdf|woff|woff2|ttf|eot)).*)",
       "destination": "/server.js"
     }
   ]

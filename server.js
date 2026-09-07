@@ -780,6 +780,20 @@ if (UPLOADS_DIR !== path.join(__dirname, 'uploads')) {
 }
 app.use(express.static(__dirname));
 
+// Explicit static asset handler to prevent catch-all from serving HTML for CSS/JS
+app.get('/:filename', (req, res, next) => {
+    const filename = req.params.filename;
+    const ext = path.extname(filename).toLowerCase();
+    const staticExts = ['.css', '.js', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.ico', '.json', '.pdf', '.woff', '.woff2'];
+    if (staticExts.includes(ext)) {
+        const filePath = path.join(__dirname, filename);
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+    }
+    next();
+});
+
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
