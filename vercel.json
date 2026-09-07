@@ -9,16 +9,8 @@
       "destination": "/api/index.js"
     },
     {
-      "source": "/style.css",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/app.js",
-      "destination": "/api/index.js"
-    },
-    {
       "source": "/:path((?!.*\\.).*)",
-      "destination": "/api/index.js"
+      "destination": "/index.html"
     }
   ]
 }
