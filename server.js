@@ -774,14 +774,37 @@ app.post('/api/reset', (req, res) => {
 
 // ─── STATIC ASSETS ───────────────────────────────────────────────────────────
 
+// Resolve the project root directory.
+// When running locally: __dirname = project root (e.g. C:/Users/.../luna skin)
+// When running on Vercel serverless: __dirname = /var/task/api/  (one level deeper)
+// So we check both to handle both environments.
+const projectRoot = fs.existsSync(path.join(__dirname, 'index.html'))
+    ? __dirname
+    : path.join(__dirname, '..');
+
 app.use('/uploads', express.static(UPLOADS_DIR));
-if (UPLOADS_DIR !== path.join(__dirname, 'uploads')) {
-    app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+if (UPLOADS_DIR !== path.join(projectRoot, 'uploads')) {
+    app.use('/uploads', express.static(path.join(projectRoot, 'uploads')));
 }
-app.use(express.static(__dirname));
+
+// Explicitly serve CSS and JS with correct MIME types first
+app.get('/style.css', (req, res) => {
+    res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.sendFile(path.join(projectRoot, 'style.css'));
+});
+
+app.get('/app.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.sendFile(path.join(projectRoot, 'app.js'));
+});
+
+// Serve all other static files from project root
+app.use(express.static(projectRoot));
 
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(projectRoot, 'index.html'));
 });
 
 if (require.main === module) {

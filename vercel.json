@@ -1,52 +1,24 @@
 {
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
+      "source": "/api/:path*",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/uploads/(.*)",
-      "dest": "/api/index.js"
+      "source": "/uploads/:path*",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/style\\.css",
-      "dest": "/style.css"
+      "source": "/style.css",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/app\\.js",
-      "dest": "/app.js"
+      "source": "/app.js",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/logo\\.png",
-      "dest": "/logo.png"
-    },
-    {
-      "src": "/logo_white\\.png",
-      "dest": "/logo_white.png"
-    },
-    {
-      "src": "/logo\\.svg",
-      "dest": "/logo.svg"
-    },
-    {
-      "src": "/before_treatment\\.jpg",
-      "dest": "/before_treatment.jpg"
-    },
-    {
-      "src": "/after_treatment\\.jpg",
-      "dest": "/after_treatment.jpg"
-    },
-    {
-      "src": "/practitioner\\.jpg",
-      "dest": "/practitioner.jpg"
-    },
-    {
-      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp))",
-      "dest": "/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/:path((?!.*\\.).*)",
+      "destination": "/api/index.js"
     }
   ]
 }
