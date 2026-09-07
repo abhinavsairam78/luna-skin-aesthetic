@@ -3,19 +3,16 @@
   "functions": {
     "api/**/*.js": {
       "includeFiles": "**"
-    },
-    "server.js": {
-      "includeFiles": "**"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/server.js"
+      "destination": "/api/index.js"
     },
     {
-      "source": "/((?!.*\\.(css|js|png|jpg|jpeg|svg|gif|ico|json|pdf|woff|woff2|ttf|eot)).*)",
-      "destination": "/server.js"
+      "source": "/uploads/(.*)",
+      "destination": "/api/index.js"
     }
   ]
 }
