@@ -1927,6 +1927,23 @@ footer.app-footer .footer-links a:hover {
     --shadow-interactive: 0 16px 48px -8px rgba(0, 0, 0, 0.6);
 }
 
+#page-landing .hero-bg-overlay {
+    background: radial-gradient(ellipse 80% 60% at 60% 50%, rgba(135, 38, 38, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 40% at 20% 80%, rgba(194, 153, 87, 0.08) 0%, transparent 50%);
+}
+
+#page-landing .btn-hero-primary {
+    box-shadow: 0 8px 32px rgba(135, 38, 38, 0.25);
+}
+
+#page-landing .btn-hero-primary:hover {
+    box-shadow: 0 12px 40px rgba(135, 38, 38, 0.35);
+}
+
+#page-landing .gallery-label.after {
+    background: rgba(135, 38, 38, 0.85);
+}
+
 /* Landing Navigation */
 .landing-nav {
     position: fixed;
@@ -2014,7 +2031,7 @@ footer.app-footer .footer-links a:hover {
 /* Hero Section */
 .hero-section {
     min-height: 100vh;
-    background: linear-gradient(135deg, #FAF8F6 0%, #F5E8E6 50%, #FAF8F6 100%);
+    background: linear-gradient(135deg, #FAF9F6 0%, #E8EFEA 50%, #FAF9F6 100%);
     display: flex;
     align-items: center;
     padding: 120px var(--margin-desktop) 80px;
@@ -2023,13 +2040,13 @@ footer.app-footer .footer-links a:hover {
 }
 
 [data-theme="dark"] .hero-section {
-    background: linear-gradient(135deg, #1C1A19 0%, #291D1C 50%, #1C1A19 100%);
+    background: linear-gradient(135deg, #1C1A19 0%, #252220 50%, #1C1A19 100%);
 }
 
 .hero-bg-overlay {
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse 80% 60% at 60% 50%, rgba(135, 38, 38, 0.12) 0%, transparent 60%),
+    background: radial-gradient(ellipse 80% 60% at 60% 50%, rgba(95, 125, 110, 0.12) 0%, transparent 60%),
                 radial-gradient(ellipse 40% 40% at 20% 80%, rgba(194, 153, 87, 0.08) 0%, transparent 50%);
     pointer-events: none;
 }
@@ -2068,8 +2085,8 @@ footer.app-footer .footer-links a:hover {
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--color-tertiary);
-    border: 1px solid rgba(194, 153, 87, 0.3);
-    background: rgba(194, 153, 87, 0.08);
+    border: 1px solid color-mix(in srgb, var(--color-tertiary) 30%, transparent);
+    background: color-mix(in srgb, var(--color-tertiary) 8%, transparent);
     padding: 4px 12px;
     margin-bottom: 24px;
 }
@@ -2113,12 +2130,12 @@ footer.app-footer .footer-links a:hover {
     cursor: pointer;
     border: none;
     transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 8px 32px rgba(135, 38, 38, 0.25);
+    box-shadow: 0 8px 32px rgba(95, 125, 110, 0.25);
 }
 
 .btn-hero-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(135, 38, 38, 0.35);
+    box-shadow: 0 12px 40px rgba(95, 125, 110, 0.35);
 }
 
 .btn-hero-ghost {
@@ -2334,8 +2351,8 @@ footer.app-footer .footer-links a:hover {
 
 .service-card.featured {
     border-color: transparent;
-    background: linear-gradient(135deg, rgba(135, 38, 38, 0.08), rgba(194, 153, 87, 0.05));
-    border: 1px solid rgba(135, 38, 38, 0.2);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 8%, transparent), color-mix(in srgb, var(--color-tertiary) 5%, transparent));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .service-badge {
@@ -2346,10 +2363,10 @@ footer.app-footer .footer-links a:hover {
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    background: rgba(194, 153, 87, 0.15);
+    background: color-mix(in srgb, var(--color-tertiary) 15%, transparent);
     color: var(--color-tertiary);
     padding: 3px 8px;
-    border: 1px solid rgba(194, 153, 87, 0.3);
+    border: 1px solid color-mix(in srgb, var(--color-tertiary) 30%, transparent);
 }
 
 .service-icon-wrap {
@@ -2516,7 +2533,7 @@ footer.app-footer .footer-links a:hover {
     padding: 3px 6px;
 }
 
-.gallery-label.after { background: rgba(135, 38, 38, 0.85); }
+.gallery-label.after { background: rgba(95, 125, 110, 0.85); }
 
 .gallery-caption {
     padding: 16px 20px;
@@ -2558,11 +2575,11 @@ footer.app-footer .footer-links a:hover {
 
 .booking-info .section-eyebrow { 
     color: var(--color-tertiary); 
-    border-color: rgba(194, 153, 87, 0.4);
+    border-color: color-mix(in srgb, var(--color-tertiary) 40%, transparent);
     background: rgba(194, 153, 87, 0.12);
 }
 .booking-info .section-title { color: var(--color-on-primary); }
-.booking-info p { color: rgba(250, 249, 246, 0.8); }
+.booking-info p { color: color-mix(in srgb, var(--color-on-primary) 80%, transparent); }
 
 .booking-contact-pills {
     display: flex;
@@ -2576,7 +2593,7 @@ footer.app-footer .footer-links a:hover {
     align-items: center;
     gap: 12px;
     font-size: 14px;
-    color: rgba(250, 249, 246, 0.85);
+    color: color-mix(in srgb, var(--color-on-primary) 85%, transparent);
 }
 
 .contact-pill .material-symbols-outlined {
