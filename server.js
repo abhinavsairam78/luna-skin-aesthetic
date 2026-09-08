@@ -811,6 +811,7 @@ const staticFiles = [
     { path: '/practitioner.jpg',       mime: 'image/jpeg' },
     { path: '/before_treatment.jpg',   mime: 'image/jpeg' },
     { path: '/after_treatment.jpg',    mime: 'image/jpeg' },
+    { path: '/index.html',             mime: 'text/html; charset=utf-8' },
 ];
 
 staticFiles.forEach(({ path: filePath, mime }) => {
@@ -831,8 +832,22 @@ staticFiles.forEach(({ path: filePath, mime }) => {
 // Serve all other static files from project root
 app.use(express.static(projectRoot));
 
+// SPA catch-all: serve index.html for any unmatched route
 app.get('*', (req, res) => {
-    res.sendFile(path.join(projectRoot, 'index.html'));
+    const indexPath = path.join(projectRoot, 'index.html');
+    console.log(`[Luna] SPA catch-all for ${req.path}, serving index.html from ${indexPath}`);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            console.error(`[Luna] CRITICAL: Cannot serve index.html from ${indexPath}:`, err.message);
+            // List all candidates for debugging
+            ROOT_CANDIDATES.forEach(dir => {
+                const exists = fs.existsSync(path.join(dir, 'index.html'));
+                console.error(`  Candidate ${dir}/index.html: ${exists ? 'EXISTS' : 'NOT FOUND'}`);
+            });
+            res.status(500).send(`Server Error: Cannot find index.html. projectRoot=${projectRoot}`);
+        }
+    });
 });
 
 if (require.main === module) {
