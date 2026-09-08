@@ -774,30 +774,58 @@ app.post('/api/reset', (req, res) => {
 
 // ─── STATIC ASSETS ───────────────────────────────────────────────────────────
 
-// Resolve the project root directory.
-// When running locally: __dirname = project root (e.g. C:/Users/.../luna skin)
-// When running on Vercel serverless: __dirname = /var/task/api/  (one level deeper)
-// So we check both to handle both environments.
-const projectRoot = fs.existsSync(path.join(__dirname, 'index.html'))
-    ? __dirname
-    : path.join(__dirname, '..');
+// Resolve the project root directory robustly across environments:
+// - Local dev: __dirname = the project root folder itself
+// - Vercel serverless (server.js called directly): __dirname = /var/task/
+// - Vercel serverless (required from api/index.js): __dirname = /var/task/ (still root)
+// We try multiple candidates and pick the first one that has index.html
+const ROOT_CANDIDATES = [
+    __dirname,
+    path.join(__dirname, '..'),
+    path.resolve(process.cwd()),
+    '/var/task'
+];
+
+const projectRoot = ROOT_CANDIDATES.find(dir => {
+    try { return fs.existsSync(path.join(dir, 'index.html')); } catch(e) { return false; }
+}) || __dirname;
+
+console.log(`[Luna] __dirname: ${__dirname}`);
+console.log(`[Luna] projectRoot resolved to: ${projectRoot}`);
+console.log(`[Luna] style.css exists: ${fs.existsSync(path.join(projectRoot, 'style.css'))}`);
+console.log(`[Luna] index.html exists: ${fs.existsSync(path.join(projectRoot, 'index.html'))}`);
 
 app.use('/uploads', express.static(UPLOADS_DIR));
-if (UPLOADS_DIR !== path.join(projectRoot, 'uploads')) {
-    app.use('/uploads', express.static(path.join(projectRoot, 'uploads')));
-}
+try {
+    const localUploads = path.join(projectRoot, 'uploads');
+    if (localUploads !== UPLOADS_DIR) app.use('/uploads', express.static(localUploads));
+} catch(e) {}
 
-// Explicitly serve CSS and JS with correct MIME types first
-app.get('/style.css', (req, res) => {
-    res.setHeader('Content-Type', 'text/css; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.sendFile(path.join(projectRoot, 'style.css'));
-});
+// Explicitly serve key static files with correct MIME types
+const staticFiles = [
+    { path: '/style.css',              mime: 'text/css; charset=utf-8' },
+    { path: '/app.js',                 mime: 'application/javascript; charset=utf-8' },
+    { path: '/logo.png',               mime: 'image/png' },
+    { path: '/logo_white.png',         mime: 'image/png' },
+    { path: '/logo.svg',               mime: 'image/svg+xml' },
+    { path: '/practitioner.jpg',       mime: 'image/jpeg' },
+    { path: '/before_treatment.jpg',   mime: 'image/jpeg' },
+    { path: '/after_treatment.jpg',    mime: 'image/jpeg' },
+];
 
-app.get('/app.js', (req, res) => {
-    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.sendFile(path.join(projectRoot, 'app.js'));
+staticFiles.forEach(({ path: filePath, mime }) => {
+    app.get(filePath, (req, res) => {
+        const fullPath = path.join(projectRoot, filePath);
+        console.log(`[Luna] Serving ${filePath} from ${fullPath}`);
+        res.setHeader('Content-Type', mime);
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.sendFile(fullPath, (err) => {
+            if (err) {
+                console.error(`[Luna] Error serving ${filePath}:`, err.message);
+                res.status(404).send(`File not found: ${filePath}`);
+            }
+        });
+    });
 });
 
 // Serve all other static files from project root
