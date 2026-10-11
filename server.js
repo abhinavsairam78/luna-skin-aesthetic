@@ -1,17 +1,111 @@
 require('dotenv').config();
+
+
+// console.log('🔍 DATABASE_URL loaded:', !!process.env.DATABASE_URL);
+// console.log('🔍 DATABASE_URL prefix:', process.env.DATABASE_URL?.substring(0, 25));
+
+
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const bcrypt = require('bcryptjs');
+const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 5,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+});
+
+// SMTP email transporter
+const mailTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+});
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+
+
+    // ─── Appointment Email Helper ─────────────────────────────────
+    async function sendAppointmentEmail({
+        to,
+        subject,
+        patientName,
+        patientPhone,
+        patientEmail,
+        date,
+        time,
+        purpose,
+        message = '',
+        action = 'Appointment Scheduled'
+    }) {
+        if (!to) {
+            console.log('📧 Email skipped: no recipient email address.');
+            return { sent: false, skipped: true };
+        }
+
+        const mailOptions = {
+            from: `"Luna Skin Aesthetic" <${process.env.SMTP_USER}>`,
+            to,
+            subject,
+            text: `
+    Luna Skin Aesthetic
+    Appointment Notification
+
+    ${action}
+
+    Patient Name: ${patientName || 'N/A'}
+    Phone: ${patientPhone || 'N/A'}
+    Patient Email: ${patientEmail || 'N/A'}
+
+    Appointment Date: ${date || 'Not specified'}
+    Appointment Time: ${time || 'Not specified'}
+    Service / Purpose: ${purpose || 'Consultation'}
+
+    ${message ? `Message: ${message}` : ''}
+
+    Regards,
+    Luna Skin Aesthetic
+    Tirunelveli
+            `.trim()
+        };
+
+        try {
+            const info = await mailTransporter.sendMail(mailOptions);
+
+            console.log(
+                `📧 Appointment email sent to ${to} | Message ID: ${info.messageId}`
+            );
+
+            return {
+                sent: true,
+                messageId: info.messageId
+            };
+
+        } catch (error) {
+            console.error(`❌ Failed to send appointment email to ${to}:`, error);
+
+            return {
+                sent: false,
+                error: error.message
+            };
+        }
+    }
 
 // Dynamic writable directory setup (safe for Vercel / serverless read-only filesystems)
 function getWritableDir(dirName) {
@@ -196,75 +290,8 @@ const INITIAL_SETTINGS = {
     licenseId: "#882-LUNA-SAFE-921",
     address: "200K/5, Seyad plaza, Tiruchendur main road, palayamkottai, Tirunelveli, Tamil Nadu 627002",
     phone: "9025676090",
-    email: "lunaskinaesthetics24@gmail.com",
-    smtpHost: "smtp.gmail.com",
-    smtpPort: "465",
-    smtpUser: "lunaskinaesthetics24@gmail.com",
-    smtpPass: "",
-    smtpSecure: true
+    email: "lunaskinaesthetics24@gmail.com"
 };
-
-// ─── Nodemailer SMTP Helper Functions ──────────────────────────────────────────
-
-function getTransporter() {
-    const settings = readDataFile(SETTINGS_FILE, INITIAL_SETTINGS);
-    const host = process.env.SMTP_HOST || settings.smtpHost || 'smtp.gmail.com';
-    const port = parseInt(process.env.SMTP_PORT || settings.smtpPort || '465', 10);
-    const user = process.env.SMTP_USER || settings.smtpUser || settings.email || 'lunaskinaesthetics24@gmail.com';
-    const pass = process.env.SMTP_PASS || settings.smtpPass || '';
-    const secure = process.env.SMTP_SECURE !== undefined 
-        ? (process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === true)
-        : (settings.smtpSecure !== undefined ? !!settings.smtpSecure : (port === 465));
-
-    if (!user || !pass) {
-        return null;
-    }
-
-    return nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-        tls: { rejectUnauthorized: false }
-    });
-}
-
-async function sendEmailNotification({ to, subject, html, text }) {
-    const settings = readDataFile(SETTINGS_FILE, INITIAL_SETTINGS);
-    const fromAddr = process.env.SMTP_FROM || `"${settings.clinicName || 'Luna Skin Aesthetics'}" <${settings.email || 'lunaskinaesthetics24@gmail.com'}>`;
-
-    const transporter = getTransporter();
-    if (!transporter) {
-        console.log(`\n================================================================================`);
-        console.log(`⚠️ [EMAIL SKIPPED - SMTP PASSWORD NOT CONFIGURED]`);
-        console.log(`   To: ${to}`);
-        console.log(`   Subject: ${subject}`);
-        console.log(`   (Add your Gmail App Password or SMTP details in Settings UI or .env to send live emails)`);
-        console.log(`================================================================================\n`);
-        return { sent: false, reason: 'SMTP password not configured in Settings or .env.' };
-    }
-
-    try {
-        const info = await transporter.sendMail({
-            from: fromAddr,
-            to,
-            subject,
-            text,
-            html
-        });
-        console.log(`\n================================================================================`);
-        console.log(`✅ [LIVE EMAIL SENT VIA SMTP] MessageId: ${info.messageId}`);
-        console.log(`   To: ${to}`);
-        console.log(`   Subject: ${subject}`);
-        console.log(`================================================================================\n`);
-        return { sent: true, messageId: info.messageId };
-    } catch (err) {
-        console.error(`\n================================================================================`);
-        console.error(`❌ [SMTP EMAIL DELIVERY ERROR] ${err.message}`);
-        console.error(`================================================================================\n`);
-        return { sent: false, error: err.message };
-    }
-}
 
 const INITIAL_USERS = [
     {
@@ -394,488 +421,2832 @@ function writeDataFile(filename, data) {
     }
 }
 
-function addNotification(message, type = 'info') {
-    const notifs = readDataFile(NOTIFICATIONS_FILE, []);
-    notifs.push({
-        id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        message,
-        type,
-        timestamp: new Date().toISOString(),
-        read: false
-    });
-    writeDataFile(NOTIFICATIONS_FILE, notifs);
-}
+// function addNotification(message, type = 'info') {
+//     const notifs = readDataFile(NOTIFICATIONS_FILE, []);
+//     notifs.push({
+//         id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+//         message,
+//         type,
+//         timestamp: new Date().toISOString(),
+//         read: false
+//     });
+//     writeDataFile(NOTIFICATIONS_FILE, notifs);
+// }
+async function addNotification(message, type = 'info') {
+    try {
+        const id = `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+        await pool.query(
+            `
+            INSERT INTO notifications (
+                id,
+                message,
+                type,
+                timestamp,
+                read
+            )
+            VALUES ($1, $2, $3, NOW(), FALSE)
+            `,
+            [id, message, type]
+        );
+
+        return id;
+    } catch (error) {
+        console.error('❌ Failed to save notification:', error.message);
+        throw error;
+    }
+}
 // ─── AUTH ROUTES ─────────────────────────────────────────────────────────────
 
 // POST /api/auth/login — Doctor or Patient login
-app.post('/api/auth/login', (req, res) => {
+// app.post('/api/auth/login', (req, res) => {
+//     const { email, password } = req.body;
+
+//     if (!email || !password) {
+//         return res.status(400).json({ error: "Email and password are required." });
+//     }
+
+//     // Check users (doctor accounts)
+//     const users = readDataFile(USERS_FILE, INITIAL_USERS);
+//     let user = users.find(u => u.role === 'doctor' && u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+
+//     // Fallback support for Mrs. Krithika SK logins
+//     if (!user && (email.toLowerCase() === 'lunaskinaesthetics24@gmail.com' || email.toLowerCase() === 'dr.krithika@lunaskin.com')) {
+//         const doctorAcc = users.find(u => u.role === 'doctor') || INITIAL_USERS[0];
+//         if (password === doctorAcc.password || password === 'krithika2026' || password === 'luna2026' || password === 'luna2024') {
+//             user = doctorAcc;
+//         }
+//     }
+
+//     if (user) {
+//         return res.json({
+//             success: true,
+//             role: user.role,
+//             id: user.id,
+//             name: user.name || "Mrs. Krithika SK",
+//             email: user.email,
+//             avatar: user.avatar || null,
+//             specialization: user.specialization || "Lead Clinical Cosmetologist & Dermatologist",
+//             licenseId: user.licenseId || "#882-LUNA-SAFE-921"
+//         });
+//     }
+
+//     // Check patient accounts (patients have email stored in their record + a password in users file)
+//     const patients = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
+//     const patientUser = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.role === 'patient');
+
+//     if (patientUser) {
+//         const patientRecord = patients.find(p => p.refId === patientUser.patientRef);
+//         return res.json({
+//             success: true,
+//             role: 'patient',
+//             id: patientUser.id,
+//             name: patientUser.name,
+//             email: patientUser.email,
+//             patientRef: patientUser.patientRef,
+//             patientRecord: patientRecord || null
+//         });
+//     }
+
+//     return res.status(401).json({ error: "Invalid credentials. Please check your email and password." });
+// });
+
+// POST /api/auth/login — Doctor or Patient login
+app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required." });
+        return res.status(400).json({
+            error: "Email and password are required."
+        });
     }
 
-    // Check users (doctor accounts)
-    const users = readDataFile(USERS_FILE, INITIAL_USERS);
-    let user = users.find(u => u.role === 'doctor' && u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    try {
+        const result = await pool.query(
+            `
+            SELECT
+                id,
+                name,
+                email,
+                password_hash,
+                role,
+                patient_ref,
+                license_id,
+                specialization,
+                avatar,
+                phone
+            FROM users
+            WHERE LOWER(email) = LOWER($1)
+            LIMIT 1
+            `,
+            [email.trim()]
+        );
 
-    // Fallback support for Mrs. Krithika SK logins
-    if (!user && (email.toLowerCase() === 'lunaskinaesthetics24@gmail.com' || email.toLowerCase() === 'dr.krithika@lunaskin.com')) {
-        const doctorAcc = users.find(u => u.role === 'doctor') || INITIAL_USERS[0];
-        if (password === doctorAcc.password || password === 'krithika2026' || password === 'luna2026' || password === 'luna2024') {
-            user = doctorAcc;
+        if (result.rows.length === 0) {
+            return res.status(401).json({
+                error: "Invalid credentials. Please check your email and password."
+            });
+        }
+
+        const user = result.rows[0];
+
+        const passwordMatches = await bcrypt.compare(
+            password,
+            user.password_hash
+        );
+
+        if (!passwordMatches) {
+            return res.status(401).json({
+                error: "Invalid credentials. Please check your email and password."
+            });
+        }
+
+        // Doctor login
+        if (user.role === 'doctor') {
+            return res.json({
+                success: true,
+                role: user.role,
+                id: user.id,
+                name: user.name || "Mrs. Krithika SK",
+                email: user.email,
+                avatar: user.avatar || null,
+                specialization:
+                    user.specialization ||
+                    "Lead Clinical Cosmetologist & Dermatologist",
+                licenseId:
+                    user.license_id ||
+                    "#882-LUNA-SAFE-921"
+            });
+        }
+
+        // Patient login
+        // if (user.role === 'patient') {
+        //     let patientRecord = null;
+
+        //     if (user.patient_ref) {
+        //         const patientResult = await pool.query(
+        //             `
+        //             SELECT *
+        //             FROM patients
+        //             WHERE ref_id = $1
+        //             LIMIT 1
+        //             `,
+        //             [user.patient_ref]
+        //         );
+
+        //         if (patientResult.rows.length > 0) {
+        //             patientRecord = patientResult.rows[0];
+        //         }
+        //     }
+
+        //     return res.json({
+        //         success: true,
+        //         role: 'patient',
+        //         id: user.id,
+        //         name: user.name,
+        //         email: user.email,
+        //         patientRef: user.patient_ref,
+        //         patientRecord
+        //     });
+        // }
+        // Patient login
+if (user.role === 'patient') {
+    let patientRecord = null;
+
+    if (user.patient_ref) {
+        const patientResult = await pool.query(
+            `
+            SELECT *
+            FROM patients
+            WHERE ref_id = $1
+            LIMIT 1
+            `,
+            [user.patient_ref]
+        );
+
+        if (patientResult.rows.length > 0) {
+            const patient = patientResult.rows[0];
+
+            const proceduresResult = await pool.query(
+                `
+                SELECT name, procedure_date, clinic
+                FROM patient_procedures
+                WHERE patient_ref = $1
+                ORDER BY procedure_date ASC, id ASC
+                `,
+                [user.patient_ref]
+            );
+
+            const logsResult = await pool.query(
+                `
+                SELECT log_date, therapy, reaction, notes
+                FROM patient_treatment_logs
+                WHERE patient_ref = $1
+                ORDER BY log_date ASC, id ASC
+                `,
+                [user.patient_ref]
+            );
+
+            const skincareResult = await pool.query(
+                `
+                SELECT name, instructions, qty
+                FROM patient_skincare
+                WHERE patient_ref = $1
+                ORDER BY id ASC
+                `,
+                [user.patient_ref]
+            );
+
+            const concernsResult = await pool.query(
+                `
+                SELECT
+                    hyperpigmentation,
+                    acne,
+                    elasticity,
+                    dehydration
+                FROM patient_concerns
+                WHERE patient_ref = $1
+                `,
+                [user.patient_ref]
+            );
+
+            const appointmentResult = await pool.query(
+                `
+                SELECT TO_CHAR(appointment_date, 'YYYY-MM-DD') AS appointment_date, appointment_time, purpose
+                FROM appointments
+                WHERE patient_ref = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+                `,
+                [user.patient_ref]
+            );
+
+            const concerns = concernsResult.rows[0];
+
+            patientRecord = {
+                refId: patient.ref_id,
+                name: patient.name,
+                age: patient.age,
+                gender: patient.gender,
+                contact: patient.contact,
+                email: patient.email,
+                allergies: patient.allergies || "",
+                medications: patient.medications || "",
+                skintype: patient.skintype || "Normal",
+                concern: patient.concern || "",
+                routine: patient.routine || "",
+                observations: patient.observations || "",
+                protocol: patient.protocol || "",
+                status: patient.status || "Active",
+                signed: patient.signed || false,
+                signatureId: patient.signature_id || "",
+                beforeDate: patient.before_date || "",
+                afterDate: patient.after_date || "",
+                beforeImg: patient.before_img || "",
+                afterImg: patient.after_img || "",
+
+                procedures: proceduresResult.rows.map(row => ({
+                    name: row.name || "",
+                    date: row.procedure_date
+                        ? row.procedure_date.toISOString().split('T')[0]
+                        : "",
+                    clinic: row.clinic || ""
+                })),
+
+                logs: logsResult.rows.map(row => ({
+                    date: row.log_date
+                        ? row.log_date.toISOString().split('T')[0]
+                        : "",
+                    therapy: row.therapy || "",
+                    reaction: row.reaction || "",
+                    notes: row.notes || ""
+                })),
+
+                skincare: skincareResult.rows.map(row => ({
+                    name: row.name || "",
+                    instructions: row.instructions || "",
+                    qty: row.qty ?? 1
+                })),
+
+                concernsChecklist: concerns
+                    ? {
+                        hyperpigmentation: concerns.hyperpigmentation || false,
+                        acne: concerns.acne || false,
+                        elasticity: concerns.elasticity || false,
+                        dehydration: concerns.dehydration || false
+                    }
+                    : {
+                        hyperpigmentation: false,
+                        acne: false,
+                        elasticity: false,
+                        dehydration: false
+                    },
+
+                appointment: appointmentResult.rows[0]
+                    ? {
+                       date: appointmentResult.rows[0].appointment_date || "",
+                        time: appointmentResult.rows[0].appointment_time || "",
+                        purpose: appointmentResult.rows[0].purpose || ""
+                    }
+                    : null,
+
+                assignedDoctor: patient.assigned_doctor || ""
+            };
         }
     }
 
-    if (user) {
-        return res.json({
-            success: true,
-            role: user.role,
-            id: user.id,
-            name: user.name || "Mrs. Krithika SK",
-            email: user.email,
-            avatar: user.avatar || null,
-            specialization: user.specialization || "Lead Clinical Cosmetologist & Dermatologist",
-            licenseId: user.licenseId || "#882-LUNA-SAFE-921"
+    return res.json({
+        success: true,
+        role: 'patient',
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        patientRef: user.patient_ref,
+        patientRecord
+    });
+}
+
+        return res.status(403).json({
+            error: "This account type is not supported."
+        });
+
+    } catch (error) {
+        console.error('❌ Login error:', error);
+
+        return res.status(500).json({
+            error: "Unable to process login."
         });
     }
-
-    // Check patient accounts (patients have email stored in their record + a password in users file)
-    const patients = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
-    const patientUser = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.role === 'patient');
-
-    if (patientUser) {
-        const patientRecord = patients.find(p => p.refId === patientUser.patientRef);
-        return res.json({
-            success: true,
-            role: 'patient',
-            id: patientUser.id,
-            name: patientUser.name,
-            email: patientUser.email,
-            patientRef: patientUser.patientRef,
-            patientRecord: patientRecord || null
-        });
-    }
-
-    return res.status(401).json({ error: "Invalid credentials. Please check your email and password." });
-});
+});     
 
 // POST /api/auth/register — Patient self-registration
-app.post('/api/auth/register', (req, res) => {
+// app.post('/api/auth/register', (req, res) => {
+//     const { name, email, password, contact, dob, gender } = req.body;
+
+//     if (!name || !email || !password) {
+//         return res.status(400).json({ error: "Name, email, and password are required." });
+//     }
+
+//     const users = readDataFile(USERS_FILE, INITIAL_USERS);
+    
+//     // Check if email already exists
+//     const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+//     if (existingUser) {
+//         return res.status(409).json({ error: "An account with this email already exists." });
+//     }
+
+//     // Generate patient refId
+//     const year = new Date().getFullYear();
+//     const randCode = Math.floor(10000 + Math.random() * 90000);
+//     const refId = `LSA-${year}-${randCode}`;
+
+//     // Calculate age from DOB
+//     const age = sanitizeAge(null, dob);
+
+//     // Create patient record
+//     const newPatient = {
+//         refId,
+//         name,
+//         age,
+//         gender: gender || "Not specified",
+//         contact: contact || "",
+//         email: email.toLowerCase(),
+//         allergies: "",
+//         medications: "",
+//         skintype: "Normal",
+//         concern: "Initial Consultation",
+//         routine: "",
+//         observations: "",
+//         protocol: "",
+//         status: "Active",
+//         signed: false,
+//         signatureId: "",
+//         beforeDate: "",
+//         afterDate: "",
+//         beforeImg: "",
+//         afterImg: "",
+//         procedures: [],
+//         logs: [],
+//         skincare: [],
+//         concernsChecklist: { hyperpigmentation: false, acne: false, elasticity: false, dehydration: false },
+//         appointment: null,
+//         assignedDoctor: "Dr. Krithika SK"
+//     };
+
+//     // Create user account
+//     const newUser = {
+//         id: `patient-${Date.now()}`,
+//         name,
+//         email: email.toLowerCase(),
+//         password,
+//         role: 'patient',
+//         patientRef: refId
+//     };
+
+//     const patients = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
+//     patients.push(newPatient);
+//     writeDataFile(PATIENTS_FILE, patients);
+
+//     users.push(newUser);
+//     writeDataFile(USERS_FILE, users);
+
+//     res.status(201).json({
+//         success: true,
+//         role: 'patient',
+//         id: newUser.id,
+//         name: newUser.name,
+//         email: newUser.email,
+//         patientRef: refId,
+//         patientRecord: newPatient
+//     });
+// });
+
+app.post('/api/auth/register', async (req, res) => {
     const { name, email, password, contact, dob, gender } = req.body;
 
     if (!name || !email || !password) {
-        return res.status(400).json({ error: "Name, email, and password are required." });
+        return res.status(400).json({
+            error: "Name, email, and password are required."
+        });
     }
 
-    const users = readDataFile(USERS_FILE, INITIAL_USERS);
-    
-    // Check if email already exists
-    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (existingUser) {
-        return res.status(409).json({ error: "An account with this email already exists." });
+    const client = await pool.connect();
+
+    try {
+        // Check if email already exists in PostgreSQL
+        const existingUserResult = await client.query(
+            `
+            SELECT id
+            FROM users
+            WHERE LOWER(email) = LOWER($1)
+            LIMIT 1
+            `,
+            [email.trim()]
+        );
+
+        if (existingUserResult.rows.length > 0) {
+            return res.status(409).json({
+                error: "An account with this email already exists."
+            });
+        }
+
+        // Generate a unique patient reference ID
+        let refId;
+        let refIdExists = true;
+
+        while (refIdExists) {
+            const year = new Date().getFullYear();
+            const randCode = Math.floor(10000 + Math.random() * 90000);
+            refId = `LSA-${year}-${randCode}`;
+
+            const refCheck = await client.query(
+                `
+                SELECT ref_id
+                FROM patients
+                WHERE ref_id = $1
+                LIMIT 1
+                `,
+                [refId]
+            );
+
+            refIdExists = refCheck.rows.length > 0;
+        }
+
+        // Calculate age from DOB
+        const age = sanitizeAge(null, dob);
+
+        const patientId = `patient-${Date.now()}`;
+
+        // Hash password before storing it
+        const passwordHash = await bcrypt.hash(password, 12);
+
+        await client.query('BEGIN');
+
+        // Create patient record
+        await client.query(
+            `
+            INSERT INTO patients (
+                ref_id,
+                name,
+                age,
+                gender,
+                contact,
+                email,
+                allergies,
+                medications,
+                skintype,
+                concern,
+                routine,
+                observations,
+                protocol,
+                status,
+                signed,
+                signature_id,
+                before_date,
+                after_date,
+                before_img,
+                after_img,
+                assigned_doctor
+            )
+            VALUES (
+                $1, $2, $3, $4, $5, $6,
+                '', '', 'Normal', 'Initial Consultation',
+                '', '', '', 'Active', FALSE, '',
+                '', '', '', '',
+                'Dr. Krithika SK'
+            )
+            `,
+            [
+                refId,
+                name.trim(),
+                age,
+                gender || "Not specified",
+                contact || "",
+                email.trim().toLowerCase()
+            ]
+        );
+
+        // Create default concerns checklist
+        await client.query(
+            `
+            INSERT INTO patient_concerns (
+                patient_ref,
+                hyperpigmentation,
+                acne,
+                elasticity,
+                dehydration
+            )
+            VALUES ($1, FALSE, FALSE, FALSE, FALSE)
+            `,
+            [refId]
+        );
+
+        // Create patient login account
+        await client.query(
+            `
+            INSERT INTO users (
+                id,
+                name,
+                email,
+                password_hash,
+                role,
+                patient_ref
+            )
+            VALUES ($1, $2, $3, $4, 'patient', $5)
+            `,
+            [
+                patientId,
+                name.trim(),
+                email.trim().toLowerCase(),
+                passwordHash,
+                refId
+            ]
+        );
+
+        await client.query('COMMIT');
+       
+
+        // Return the same structure expected by the frontend
+        const patientRecord = {
+            refId,
+            name: name.trim(),
+            age,
+            gender: gender || "Not specified",
+            contact: contact || "",
+            email: email.trim().toLowerCase(),
+            allergies: "",
+            medications: "",
+            skintype: "Normal",
+            concern: "Initial Consultation",
+            routine: "",
+            observations: "",
+            protocol: "",
+            status: "Active",
+            signed: false,
+            signatureId: "",
+            beforeDate: "",
+            afterDate: "",
+            beforeImg: "",
+            afterImg: "",
+            procedures: [],
+            logs: [],
+            skincare: [],
+            concernsChecklist: {
+                hyperpigmentation: false,
+                acne: false,
+                elasticity: false,
+                dehydration: false
+            },
+            appointment: null,
+            assignedDoctor: "Dr. Krithika SK"
+        };
+
+        return res.status(201).json({
+            success: true,
+            role: 'patient',
+            id: patientId,
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            patientRef: refId,
+            patientRecord
+        });
+
+    } catch (error) {
+        try {
+            await client.query('ROLLBACK');
+        } catch (rollbackError) {
+            console.error('❌ Rollback error:', rollbackError.message);
+        }
+
+        console.error('❌ Registration error:', error);
+
+        // Handle PostgreSQL duplicate email/refId race conditions
+        if (error.code === '23505') {
+            return res.status(409).json({
+                error: "An account with this email already exists."
+            });
+        }
+
+        return res.status(500).json({
+            error: "Unable to create patient account."
+        });
+
+    } finally {
+        client.release();
     }
-
-    // Generate patient refId
-    const year = new Date().getFullYear();
-    const randCode = Math.floor(10000 + Math.random() * 90000);
-    const refId = `LSA-${year}-${randCode}`;
-
-    // Calculate age from DOB
-    const age = sanitizeAge(null, dob);
-
-    // Create patient record
-    const newPatient = {
-        refId,
-        name,
-        age,
-        gender: gender || "Not specified",
-        contact: contact || "",
-        email: email.toLowerCase(),
-        allergies: "",
-        medications: "",
-        skintype: "Normal",
-        concern: "Initial Consultation",
-        routine: "",
-        observations: "",
-        protocol: "",
-        status: "Active",
-        signed: false,
-        signatureId: "",
-        beforeDate: "",
-        afterDate: "",
-        beforeImg: "",
-        afterImg: "",
-        procedures: [],
-        logs: [],
-        skincare: [],
-        concernsChecklist: { hyperpigmentation: false, acne: false, elasticity: false, dehydration: false },
-        appointment: null,
-        assignedDoctor: "Dr. Krithika SK"
-    };
-
-    // Create user account
-    const newUser = {
-        id: `patient-${Date.now()}`,
-        name,
-        email: email.toLowerCase(),
-        password,
-        role: 'patient',
-        patientRef: refId
-    };
-
-    const patients = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
-    patients.push(newPatient);
-    writeDataFile(PATIENTS_FILE, patients);
-
-    users.push(newUser);
-    writeDataFile(USERS_FILE, users);
-
-    res.status(201).json({
-        success: true,
-        role: 'patient',
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        patientRef: refId,
-        patientRecord: newPatient
-    });
 });
+
+
 
 // ─── ALL APPOINTMENTS ROUTE (For Doctor Calendar) ────────────────────────────
 
 // GET /api/appointments — Aggregate all patient appointments
-app.get('/api/appointments', (req, res) => {
-    const patients = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
-    const appointments = [];
+// ─── ALL APPOINTMENTS ROUTE (For Doctor Calendar) ────────────────────────────
 
-    patients.forEach(p => {
-        if (p.appointment && p.appointment.date) {
-            appointments.push({
-                patientName: p.name,
-                patientRef: p.refId,
-                date: p.appointment.date,
-                time: p.appointment.time || "TBD",
-                purpose: p.appointment.purpose || "Consultation",
-                status: p.status
+
+ // GET /api/appointments — Read all appointments from PostgreSQL
+
+app.get('/api/appointments', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                a.id,
+                a.patient_ref,
+                p.name AS patient_name,
+                p.status AS patient_status,
+                a.status AS appointment_status,
+                TO_CHAR(a.appointment_date, 'YYYY-MM-DD') AS appointment_date,
+                a.appointment_time,
+                a.purpose,
+                a.room,
+                a.duration_minutes,
+                a.created_at
+            FROM appointments a
+            INNER JOIN patients p
+                ON p.ref_id = a.patient_ref
+            ORDER BY
+                CASE
+                    WHEN LOWER(COALESCE(a.status, 'active')) = 'completed'
+                    THEN 1 ELSE 0
+                END,
+                a.appointment_date ASC,
+                a.appointment_time ASC,
+                a.created_at ASC
+        `);
+
+        const appointments = result.rows.map(row => ({
+            id: row.id,
+            patientName: row.patient_name,
+            patientRef: row.patient_ref,
+            date: row.appointment_date || '',
+            time: row.appointment_time || 'TBD',
+            purpose: row.purpose || 'Consultation',
+            room: row.room || 'Unassigned',
+            duration: row.duration_minutes || 60,
+            status: row.appointment_status || 'Active'
+        }));
+
+        return res.json(appointments);
+    } catch (error) {
+        console.error('Failed to load appointments:', error);
+        return res.status(500).json({
+            error: 'Unable to load appointments.'
+        });
+    }
+});
+
+app.patch('/api/appointments/:id/status', async (req, res) => {
+    try {
+        console.log('PATCH appointment status route reached:', req.params.id);
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!['Active', 'Completed'].includes(status)) {
+            return res.status(400).json({
+                error: 'Status must be Active or Completed.'
             });
         }
-    });
 
-    // Sort by date
-    appointments.sort((a, b) => new Date(a.date) - new Date(b.date));
-    res.json(appointments);
+        const result = await pool.query(
+            `UPDATE appointments
+             SET status = $1
+             WHERE id = $2
+             RETURNING id, status`,
+            [status, id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                error: 'Appointment not found.'
+            });
+        }
+
+        return res.json({
+            success: true,
+            id: result.rows[0].id,
+            status: result.rows[0].status
+        });
+    } catch (error) {
+        console.error('Failed to update appointment status:', error);
+        return res.status(500).json({
+            error: 'Unable to update appointment status.'
+        });
+    }
 });
+
+
 
 // ─── PATIENT ROUTES ──────────────────────────────────────────────────────────
 
-app.get('/api/patients', (req, res) => {
-    const data = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
-    res.json(data);
+// app.get('/api/patients', (req, res) => {
+//     const data = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
+//     res.json(data);
+// });
+
+
+app.get('/api/patients', async (req, res) => {
+    try {
+        // 1. Fetch all patients first.
+        const patientsResult = await pool.query(`
+            SELECT *
+            FROM patients
+            ORDER BY created_at DESC
+        `);
+
+        const patientRows = patientsResult.rows;
+
+        if (patientRows.length === 0) {
+            return res.json([]);
+        }
+
+        // Collect patient references for batch queries.
+        const patientRefs = patientRows.map(patient => patient.ref_id);
+
+        // 2. Fetch related records in parallel instead of querying
+        // separately for every patient.
+        const [
+            proceduresResult,
+            logsResult,
+            skincareResult,
+            concernsResult,
+            appointmentsResult
+        ] = await Promise.all([
+            pool.query(`
+                SELECT
+                    patient_ref,
+                    name,
+                    TO_CHAR(procedure_date, 'YYYY-MM-DD') AS procedure_date,
+                    clinic
+                FROM patient_procedures
+                WHERE patient_ref = ANY($1::varchar[])
+                ORDER BY procedure_date ASC, id ASC
+            `, [patientRefs]),
+
+            pool.query(`
+                SELECT
+                    patient_ref,
+                    TO_CHAR(log_date, 'YYYY-MM-DD') AS log_date,
+                    therapy,
+                    reaction,
+                    notes
+                FROM patient_treatment_logs
+                WHERE patient_ref = ANY($1::varchar[])
+                ORDER BY log_date ASC, id ASC
+            `, [patientRefs]),
+
+            pool.query(`
+                SELECT
+                    patient_ref,
+                    name,
+                    instructions,
+                    qty
+                FROM patient_skincare
+                WHERE patient_ref = ANY($1::varchar[])
+                ORDER BY id ASC
+            `, [patientRefs]),
+
+            pool.query(`
+                SELECT
+                    patient_ref,
+                    hyperpigmentation,
+                    acne,
+                    elasticity,
+                    dehydration
+                FROM patient_concerns
+                WHERE patient_ref = ANY($1::varchar[])
+            `, [patientRefs]),
+
+            pool.query(`
+                SELECT DISTINCT ON (patient_ref)
+                    patient_ref,
+                    TO_CHAR(appointment_date, 'YYYY-MM-DD')
+                        AS appointment_date,
+                    appointment_time,
+                    purpose
+                FROM appointments
+                WHERE patient_ref = ANY($1::varchar[])
+                ORDER BY patient_ref, created_at DESC, id DESC
+            `, [patientRefs])
+        ]);
+
+        // 3. Group child records by patient reference.
+        const groupByPatient = (rows) => {
+            const grouped = new Map();
+
+            for (const row of rows) {
+                if (!grouped.has(row.patient_ref)) {
+                    grouped.set(row.patient_ref, []);
+                }
+
+                grouped.get(row.patient_ref).push(row);
+            }
+
+            return grouped;
+        };
+
+        const proceduresByPatient =
+            groupByPatient(proceduresResult.rows);
+
+        const logsByPatient =
+            groupByPatient(logsResult.rows);
+
+        const skincareByPatient =
+            groupByPatient(skincareResult.rows);
+
+        const concernsByPatient =
+            new Map(
+                concernsResult.rows.map(row => [row.patient_ref, row])
+            );
+
+        const appointmentsByPatient =
+            new Map(
+                appointmentsResult.rows.map(row => [row.patient_ref, row])
+            );
+
+        // 4. Build the same response structure expected by the frontend.
+        const patients = patientRows.map(patient => {
+            const refId = patient.ref_id;
+
+            const procedures = proceduresByPatient.get(refId) || [];
+            const logs = logsByPatient.get(refId) || [];
+            const skincare = skincareByPatient.get(refId) || [];
+            const concerns = concernsByPatient.get(refId);
+            const appointment = appointmentsByPatient.get(refId);
+
+            return {
+                refId,
+                name: patient.name,
+                age: patient.age,
+                gender: patient.gender,
+                contact: patient.contact,
+                email: patient.email,
+                allergies: patient.allergies || "",
+                medications: patient.medications || "",
+                skintype: patient.skintype || "Normal",
+                concern: patient.concern || "",
+                routine: patient.routine || "",
+                observations: patient.observations || "",
+                protocol: patient.protocol || "",
+                status: patient.status || "Active",
+                signed: patient.signed || false,
+                signatureId: patient.signature_id || "",
+                beforeDate: patient.before_date || "",
+                afterDate: patient.after_date || "",
+                beforeImg: patient.before_img || "",
+                afterImg: patient.after_img || "",
+
+                procedures: procedures.map(row => ({
+                    name: row.name || "",
+                    date: row.procedure_date || "",
+                    clinic: row.clinic || ""
+                })),
+
+                logs: logs.map(row => ({
+                    date: row.log_date || "",
+                    therapy: row.therapy || "",
+                    reaction: row.reaction || "",
+                    notes: row.notes || ""
+                })),
+
+                skincare: skincare.map(row => ({
+                    name: row.name || "",
+                    instructions: row.instructions || "",
+                    qty: row.qty ?? 1
+                })),
+
+                concernsChecklist: concerns
+                    ? {
+                        hyperpigmentation: concerns.hyperpigmentation || false,
+                        acne: concerns.acne || false,
+                        elasticity: concerns.elasticity || false,
+                        dehydration: concerns.dehydration || false
+                    }
+                    : {
+                        hyperpigmentation: false,
+                        acne: false,
+                        elasticity: false,
+                        dehydration: false
+                    },
+
+                appointment: appointment
+                    ? {
+                        date: appointment.appointment_date || "",
+                        time: appointment.appointment_time || "",
+                        purpose: appointment.purpose || ""
+                    }
+                    : null,
+
+                assignedDoctor: patient.assigned_doctor || ""
+            };
+        });
+
+        res.json(patients);
+
+    } catch (error) {
+        console.error('Error fetching patients:', error);
+
+        res.status(500).json({
+            error: "Unable to fetch patients."
+        });
+    }
 });
 
-app.post('/api/patients', (req, res) => {
-    const patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
-    const newPatient = req.body;
+
+
+// app.post('/api/patients', (req, res) => {
+//     const patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
+//     const newPatient = req.body;
+
+//     if (!newPatient.name) {
+//         return res.status(400).json({ error: "Patient name is required." });
+//     }
+
+//     if (!newPatient.refId) {
+//         const year = new Date().getFullYear();
+//         const randCode = Math.floor(10000 + Math.random() * 90000);
+//         newPatient.refId = `LSA-${year}-${randCode}`;
+//     }
+
+//     newPatient.email = (newPatient.email || '').toLowerCase().trim();
+//     newPatient.procedures = newPatient.procedures || [];
+//     newPatient.logs = newPatient.logs || [];
+//     newPatient.skincare = newPatient.skincare || [];
+//     newPatient.concernsChecklist = newPatient.concernsChecklist || {
+//         hyperpigmentation: false, acne: false, elasticity: false, dehydration: false
+//     };
+//     newPatient.status = newPatient.status || "Active";
+//     newPatient.signed = newPatient.signed || false;
+//     newPatient.signatureId = newPatient.signatureId || "";
+//     newPatient.assignedDoctor = newPatient.assignedDoctor || "Dr. Krithika SK";
+
+//     patientsList.push(newPatient);
+//     writeDataFile(PATIENTS_FILE, patientsList);
+
+//     // Auto-create matching patient user account if email is provided and doesn't exist
+//     if (newPatient.email) {
+//         const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
+//         const existingUser = usersList.find(u => u.email.toLowerCase() === newPatient.email.toLowerCase());
+//         if (!existingUser) {
+//             // Generate a unique PIN password for each newly created client account
+//             const randPass = 'Luna' + Math.floor(1000 + Math.random() * 9000);
+//             const newUser = {
+//                 id: `patient-${Date.now()}`,
+//                 name: newPatient.name,
+//                 email: newPatient.email.toLowerCase(),
+//                 password: randPass,
+//                 role: 'patient',
+//                 patientRef: newPatient.refId
+//             };
+//             usersList.push(newUser);
+//             writeDataFile(USERS_FILE, usersList);
+//             newPatient.password = randPass;
+//         } else {
+//             newPatient.password = existingUser.password;
+//         }
+//     }
+
+//     res.status(201).json(newPatient);
+// });
+
+app.post('/api/patients', async (req, res) => {
+    const newPatient = { ...req.body };
 
     if (!newPatient.name) {
-        return res.status(400).json({ error: "Patient name is required." });
+        return res.status(400).json({
+            error: "Patient name is required."
+        });
     }
 
-    if (!newPatient.refId) {
-        const year = new Date().getFullYear();
-        const randCode = Math.floor(10000 + Math.random() * 90000);
-        newPatient.refId = `LSA-${year}-${randCode}`;
-    }
+    const client = await pool.connect();
 
-    newPatient.email = (newPatient.email || '').toLowerCase().trim();
-    newPatient.procedures = newPatient.procedures || [];
-    newPatient.logs = newPatient.logs || [];
-    newPatient.skincare = newPatient.skincare || [];
-    newPatient.concernsChecklist = newPatient.concernsChecklist || {
-        hyperpigmentation: false, acne: false, elasticity: false, dehydration: false
-    };
-    newPatient.status = newPatient.status || "Active";
-    newPatient.signed = newPatient.signed || false;
-    newPatient.signatureId = newPatient.signatureId || "";
-    newPatient.assignedDoctor = newPatient.assignedDoctor || "Dr. Krithika SK";
+    try {
+        newPatient.email = (newPatient.email || '').toLowerCase().trim();
 
-    patientsList.push(newPatient);
-    writeDataFile(PATIENTS_FILE, patientsList);
+        // Generate a unique patient reference if one was not provided
+        if (!newPatient.refId) {
+            let refIdExists = true;
 
-    // Auto-create matching patient user account if email is provided and doesn't exist
-    if (newPatient.email) {
-        const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
-        const existingUser = usersList.find(u => u.email.toLowerCase() === newPatient.email.toLowerCase());
-        if (!existingUser) {
-            // Generate a unique PIN password for each newly created client account
-            const randPass = 'Luna' + Math.floor(1000 + Math.random() * 9000);
-            const newUser = {
-                id: `patient-${Date.now()}`,
-                name: newPatient.name,
-                email: newPatient.email.toLowerCase(),
-                password: randPass,
-                role: 'patient',
-                patientRef: newPatient.refId
-            };
-            usersList.push(newUser);
-            writeDataFile(USERS_FILE, usersList);
-            newPatient.password = randPass;
+            while (refIdExists) {
+                const year = new Date().getFullYear();
+                const randCode = Math.floor(10000 + Math.random() * 90000);
+                newPatient.refId = `LSA-${year}-${randCode}`;
+
+                const refCheck = await client.query(
+                    `
+                    SELECT ref_id
+                    FROM patients
+                    WHERE ref_id = $1
+                    LIMIT 1
+                    `,
+                    [newPatient.refId]
+                );
+
+                refIdExists = refCheck.rows.length > 0;
+            }
         } else {
-            newPatient.password = existingUser.password;
+            const refCheck = await client.query(
+                `
+                SELECT ref_id
+                FROM patients
+                WHERE ref_id = $1
+                LIMIT 1
+                `,
+                [newPatient.refId]
+            );
+
+            if (refCheck.rows.length > 0) {
+                return res.status(409).json({
+                    error: "A patient with this reference ID already exists."
+                });
+            }
         }
-    }
 
-    res.status(201).json(newPatient);
-});
+        newPatient.procedures = Array.isArray(newPatient.procedures)
+            ? newPatient.procedures
+            : [];
 
-app.put('/api/patients/:refId', (req, res) => {
-    const patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
-    const refId = req.params.refId;
-    const index = patientsList.findIndex(p => p.refId === refId);
+        newPatient.logs = Array.isArray(newPatient.logs)
+            ? newPatient.logs
+            : [];
 
-    if (index === -1) {
-        return res.status(404).json({ error: "Patient record not found." });
-    }
+        newPatient.skincare = Array.isArray(newPatient.skincare)
+            ? newPatient.skincare
+            : [];
 
-    patientsList[index] = { ...patientsList[index], ...req.body };
-    writeDataFile(PATIENTS_FILE, patientsList);
-    res.json(patientsList[index]);
-});
+        newPatient.concernsChecklist = newPatient.concernsChecklist || {
+            hyperpigmentation: false,
+            acne: false,
+            elasticity: false,
+            dehydration: false
+        };
 
-app.delete('/api/patients/:refId', (req, res) => {
-    let patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
-    const rawRef = req.params.refId || '';
-    let refId = rawRef.trim().toLowerCase();
-    try { refId = decodeURIComponent(rawRef).trim().toLowerCase(); } catch (e) {}
+        newPatient.status = newPatient.status || "Active";
+        newPatient.signed = newPatient.signed || false;
+        newPatient.signatureId = newPatient.signatureId || "";
+        newPatient.assignedDoctor =
+            newPatient.assignedDoctor || "Dr. Krithika SK";
 
-    const index = patientsList.findIndex(p => p.refId && p.refId.trim().toLowerCase() === refId);
+        await client.query('BEGIN');
 
-    let deletedPatient = null;
-    if (index !== -1) {
-        deletedPatient = patientsList.splice(index, 1)[0];
-    } else {
-        const altIndex = patientsList.findIndex(p => p.name && p.name.trim().toLowerCase() === refId);
-        if (altIndex !== -1) {
-            deletedPatient = patientsList.splice(altIndex, 1)[0];
-        }
-    }
-
-    if (deletedPatient) {
-        writeDataFile(PATIENTS_FILE, patientsList);
-        const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
-        const userIndex = usersList.findIndex(u =>
-            (u.patientRef && u.patientRef.trim().toLowerCase() === refId) ||
-            (deletedPatient.email && u.email && u.email.toLowerCase() === deletedPatient.email.toLowerCase() && u.role === 'patient')
+        // Create main patient record
+        await client.query(
+            `
+            INSERT INTO patients (
+                ref_id,
+                name,
+                age,
+                gender,
+                contact,
+                email,
+                allergies,
+                medications,
+                skintype,
+                concern,
+                routine,
+                observations,
+                protocol,
+                status,
+                signed,
+                signature_id,
+                before_date,
+                after_date,
+                before_img,
+                after_img,
+                assigned_doctor
+            )
+            VALUES (
+                $1, $2, $3, $4, $5, $6,
+                $7, $8, $9, $10, $11, $12,
+                $13, $14, $15, $16, $17, $18,
+                $19, $20, $21
+            )
+            `,
+            [
+                newPatient.refId,
+                newPatient.name.trim(),
+                sanitizeAge(newPatient.age, newPatient.dob),
+                newPatient.gender || "Not specified",
+                newPatient.contact || "",
+                newPatient.email || "",
+                newPatient.allergies || "",
+                newPatient.medications || "",
+                newPatient.skintype || "Normal",
+                newPatient.concern || "Initial Consultation",
+                newPatient.routine || "",
+                newPatient.observations || "",
+                newPatient.protocol || "",
+                newPatient.status,
+                newPatient.signed,
+                newPatient.signatureId,
+                newPatient.beforeDate || "",
+                newPatient.afterDate || "",
+                newPatient.beforeImg || "",
+                newPatient.afterImg || "",
+                newPatient.assignedDoctor
+            ]
         );
-        if (userIndex !== -1) {
-            usersList.splice(userIndex, 1);
-            writeDataFile(USERS_FILE, usersList);
+
+        // Procedures
+        for (const procedure of newPatient.procedures) {
+            await client.query(
+                `
+                INSERT INTO patient_procedures (
+                    patient_ref,
+                    name,
+                    procedure_date,
+                    clinic
+                )
+                VALUES ($1, $2, $3, $4)
+                `,
+                [
+                    newPatient.refId,
+                    procedure.name || "",
+                    procedure.date || null,
+                    procedure.clinic || ""
+                ]
+            );
         }
+
+        // Treatment logs
+        for (const log of newPatient.logs) {
+            await client.query(
+                `
+                INSERT INTO patient_treatment_logs (
+                    patient_ref,
+                    log_date,
+                    therapy,
+                    reaction,
+                    notes
+                )
+                VALUES ($1, $2, $3, $4, $5)
+                `,
+                [
+                    newPatient.refId,
+                    log.date || null,
+                    log.therapy || "",
+                    log.reaction || "",
+                    log.notes || ""
+                ]
+            );
+        }
+
+        // Skincare
+        for (const item of newPatient.skincare) {
+            await client.query(
+                `
+                INSERT INTO patient_skincare (
+                    patient_ref,
+                    name,
+                    instructions,
+                    qty
+                )
+                VALUES ($1, $2, $3, $4)
+                `,
+                [
+                    newPatient.refId,
+                    item.name || "",
+                    item.instructions || "",
+                    item.qty ?? 1
+                ]
+            );
+        }
+
+        // Concerns checklist
+        await client.query(
+            `
+            INSERT INTO patient_concerns (
+                patient_ref,
+                hyperpigmentation,
+                acne,
+                elasticity,
+                dehydration
+            )
+            VALUES ($1, $2, $3, $4, $5)
+            `,
+            [
+                newPatient.refId,
+                !!newPatient.concernsChecklist.hyperpigmentation,
+                !!newPatient.concernsChecklist.acne,
+                !!newPatient.concernsChecklist.elasticity,
+                !!newPatient.concernsChecklist.dehydration
+            ]
+        );
+
+        // Create patient login account when email is provided
+        let generatedPassword = null;
+
+        if (newPatient.email) {
+            const existingUserResult = await client.query(
+                `
+                SELECT id
+                FROM users
+                WHERE LOWER(email) = LOWER($1)
+                LIMIT 1
+                `,
+                [newPatient.email]
+            );
+
+            if (existingUserResult.rows.length === 0) {
+                generatedPassword =
+                    'Luna' + Math.floor(1000 + Math.random() * 9000);
+
+                const passwordHash = await bcrypt.hash(
+                    generatedPassword,
+                    12
+                );
+
+                await client.query(
+                    `
+                    INSERT INTO users (
+                        id,
+                        name,
+                        email,
+                        password_hash,
+                        role,
+                        patient_ref
+                    )
+                    VALUES ($1, $2, $3, $4, 'patient', $5)
+                    `,
+                    [
+                        `patient-${Date.now()}`,
+                        newPatient.name.trim(),
+                        newPatient.email,
+                        passwordHash,
+                        newPatient.refId
+                    ]
+                );
+            }
+        }
+
+        await client.query('COMMIT');
+
+        const patientRecord = {
+            refId: newPatient.refId,
+            name: newPatient.name.trim(),
+            age: sanitizeAge(newPatient.age, newPatient.dob),
+            gender: newPatient.gender || "Not specified",
+            contact: newPatient.contact || "",
+            email: newPatient.email || "",
+            allergies: newPatient.allergies || "",
+            medications: newPatient.medications || "",
+            skintype: newPatient.skintype || "Normal",
+            concern: newPatient.concern || "Initial Consultation",
+            routine: newPatient.routine || "",
+            observations: newPatient.observations || "",
+            protocol: newPatient.protocol || "",
+            status: newPatient.status,
+            signed: newPatient.signed,
+            signatureId: newPatient.signatureId,
+            beforeDate: newPatient.beforeDate || "",
+            afterDate: newPatient.afterDate || "",
+            beforeImg: newPatient.beforeImg || "",
+            afterImg: newPatient.afterImg || "",
+            procedures: newPatient.procedures,
+            logs: newPatient.logs,
+            skincare: newPatient.skincare,
+            concernsChecklist: newPatient.concernsChecklist,
+            appointment: null,
+            assignedDoctor: newPatient.assignedDoctor
+        };
+
+        return res.status(201).json({
+            ...patientRecord,
+            ...(generatedPassword ? { password: generatedPassword } : {})
+        });
+
+    } catch (error) {
+        try {
+            await client.query('ROLLBACK');
+        } catch (rollbackError) {
+            console.error(
+                '❌ Rollback error:',
+                rollbackError.message
+            );
+        }
+
+        console.error('❌ Error creating patient:', error);
+
+        if (error.code === '23505') {
+            return res.status(409).json({
+                error: "A patient or account with these details already exists."
+            });
+        }
+
+        return res.status(500).json({
+            error: "Unable to create patient."
+        });
+
+    } finally {
+        client.release();
+    }
+});
+
+
+
+// app.put('/api/patients/:refId', (req, res) => {
+//     const patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
+//     const refId = req.params.refId;
+//     const index = patientsList.findIndex(p => p.refId === refId);
+
+//     if (index === -1) {
+//         return res.status(404).json({ error: "Patient record not found." });
+//     }
+
+//     patientsList[index] = { ...patientsList[index], ...req.body };
+//     writeDataFile(PATIENTS_FILE, patientsList);
+//     res.json(patientsList[index]);
+// });
+
+
+app.get('/api/available-rooms', async (req, res) => {
+    try {
+        const { date, time, duration, patientRef } = req.query;
+
+        if (!date || !time || !duration) {
+            return res.status(400).json({
+                error: 'Date, time, and duration are required.'
+            });
+        }
+
+        const requestedDuration = Number(duration);
+        const allowedDurations = [30, 45, 60, 90];
+
+        if (!allowedDurations.includes(requestedDuration)) {
+            return res.status(400).json({
+                error: 'Invalid appointment duration.'
+            });
+        }
+
+        const parseTime = (value) => {
+            const match = String(value).trim().match(
+                /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i
+            );
+
+            if (!match) return null;
+
+            let hours = Number(match[1]);
+            const minutes = Number(match[2]);
+            const period = match[3].toUpperCase();
+
+            if (hours < 1 || hours > 12 || minutes > 59) {
+                return null;
+            }
+
+            if (period === 'AM') {
+                if (hours === 12) hours = 0;
+            } else if (hours !== 12) {
+                hours += 12;
+            }
+
+            return hours * 60 + minutes;
+        };
+
+        const start = parseTime(time);
+
+        if (start === null) {
+            return res.status(400).json({
+                error: 'Please select a valid appointment time.'
+            });
+        }
+
+        const end = start + requestedDuration;
+
+        const withinClinicHours =
+            (start >= 540 && end <= 780) ||
+            (start >= 840 && end <= 1080);
+
+        if (!withinClinicHours) {
+            return res.status(400).json({
+                error: 'This appointment falls outside clinic hours.'
+            });
+        }
+
+        const result = await pool.query(
+            `
+            SELECT appointment_time, room, duration_minutes
+            FROM appointments
+            WHERE appointment_date = $1::date
+              AND LOWER(COALESCE(status, '')) NOT IN (
+                  'cancelled', 'canceled', 'rejected'
+              )
+              AND ($2::text IS NULL OR patient_ref <> $2)
+            `,
+            [date, patientRef || null]
+        );
+
+        const rooms = [
+            'Room 1', 'Room 2', 'Room 3', 'Room 4'
+        ];
+
+        const availableRooms = rooms.filter(room => {
+            return !result.rows.some(existing => {
+                const existingStart = parseTime(
+                    existing.appointment_time
+                );
+
+                if (existingStart === null) return false;
+
+                const existingDuration =
+                    Number(existing.duration_minutes) || 60;
+
+                const existingEnd = existingStart + existingDuration;
+
+                const overlaps =
+                    start < existingEnd &&
+                    existingStart < end;
+
+                return overlaps &&
+                    (!existing.room || existing.room === room);
+            });
+        });
+
+        return res.json({ availableRooms });
+
+    } catch (error) {
+        console.error('Failed to check room availability:', error);
+
+        return res.status(500).json({
+            error: 'Unable to check room availability.'
+        });
+    }
+});
+
+
+app.put('/api/patients/:refId', async (req, res) => {
+    const refId = req.params.refId;
+    const routeStartedAt = Date.now();
+    const client = await pool.connect();    
+
+    try {
+        // Check that the patient exists
+        const existingPatientResult = await client.query(
+            `
+            SELECT *
+            FROM patients
+            WHERE ref_id = $1
+            LIMIT 1
+            `,
+            [refId]
+        );
+
+        if (existingPatientResult.rows.length === 0) {
+            return res.status(404).json({
+                error: "Patient record not found."
+            });
+        }
+
+        const existingPatient = existingPatientResult.rows[0];
+        const updatedPatient = {
+            ...req.body
+        };
+
+        // Keep existing values when a field was not supplied
+        const name = updatedPatient.name ?? existingPatient.name;
+        const age = sanitizeAge(
+            updatedPatient.age ?? existingPatient.age,
+            updatedPatient.dob
+        );
+        const gender = updatedPatient.gender ?? existingPatient.gender;
+        const contact = updatedPatient.contact ?? existingPatient.contact;
+        const email = updatedPatient.email !== undefined
+            ? String(updatedPatient.email).toLowerCase().trim()
+            : existingPatient.email;
+
+        const allergies = updatedPatient.allergies ?? existingPatient.allergies ?? "";
+        const medications = updatedPatient.medications ?? existingPatient.medications ?? "";
+        const skintype = updatedPatient.skintype ?? existingPatient.skintype ?? "Normal";
+        const concern = updatedPatient.concern ?? existingPatient.concern ?? "";
+        const routine = updatedPatient.routine ?? existingPatient.routine ?? "";
+        const observations = updatedPatient.observations ?? existingPatient.observations ?? "";
+        const protocol = updatedPatient.protocol ?? existingPatient.protocol ?? "";
+        const status = updatedPatient.status ?? existingPatient.status ?? "Active";
+        const signed = updatedPatient.signed ?? existingPatient.signed ?? false;
+        const signatureId = updatedPatient.signatureId ?? existingPatient.signature_id ?? "";
+        const beforeDate = updatedPatient.beforeDate ?? existingPatient.before_date ?? "";
+        const afterDate = updatedPatient.afterDate ?? existingPatient.after_date ?? "";
+        const beforeImg = updatedPatient.beforeImg ?? existingPatient.before_img ?? "";
+        const afterImg = updatedPatient.afterImg ?? existingPatient.after_img ?? "";
+        const assignedDoctor =
+            updatedPatient.assignedDoctor ??
+            existingPatient.assigned_doctor ??
+            "";
+
+        const procedures = Array.isArray(updatedPatient.procedures)
+            ? updatedPatient.procedures
+            : null;
+
+        const logs = Array.isArray(updatedPatient.logs)
+            ? updatedPatient.logs
+            : null;
+
+        const skincare = Array.isArray(updatedPatient.skincare)
+            ? updatedPatient.skincare
+            : null;
+
+        const appointment = updatedPatient.appointment && typeof updatedPatient.appointment === "object"
+            ? updatedPatient.appointment
+            : null;
+
+        const concernsChecklist =
+            updatedPatient.concernsChecklist &&
+            typeof updatedPatient.concernsChecklist === "object"
+                ? updatedPatient.concernsChecklist
+                : null;
+
+        await client.query('BEGIN');
+
+        // Update main patient record
+        await client.query(
+            `
+            UPDATE patients
+            SET
+                name = $1,
+                age = $2,
+                gender = $3,
+                contact = $4,
+                email = $5,
+                allergies = $6,
+                medications = $7,
+                skintype = $8,
+                concern = $9,
+                routine = $10,
+                observations = $11,
+                protocol = $12,
+                status = $13,
+                signed = $14,
+                signature_id = $15,
+                before_date = $16,
+                after_date = $17,
+                before_img = $18,
+                after_img = $19,
+                assigned_doctor = $20,
+                updated_at = NOW()
+            WHERE ref_id = $21
+            `,
+            [
+                name,
+                age,
+                gender,
+                contact,
+                email,
+                allergies,
+                medications,
+                skintype,
+                concern,
+                routine,
+                observations,
+                protocol,
+                status,
+                signed,
+                signatureId,
+                beforeDate,
+                afterDate,
+                beforeImg,
+                afterImg,
+                assignedDoctor,
+                refId
+            ]
+        );
+
+        // Replace procedures only when the request supplied procedures
+        if (procedures !== null) {
+            await client.query(
+                `
+                DELETE FROM patient_procedures
+                WHERE patient_ref = $1
+                `,
+                [refId]
+            );
+
+            for (const procedure of procedures) {
+                await client.query(
+                    `
+                    INSERT INTO patient_procedures (
+                        patient_ref,
+                        name,
+                        procedure_date,
+                        clinic
+                    )
+                    VALUES ($1, $2, $3, $4)
+                    `,
+                    [
+                        refId,
+                        procedure.name || "",
+                        procedure.date || null,
+                        procedure.clinic || ""
+                    ]
+                );
+            }
+        }
+
+        // Replace treatment logs only when supplied
+        if (logs !== null) {
+            await client.query(
+                `
+                DELETE FROM patient_treatment_logs
+                WHERE patient_ref = $1
+                `,
+                [refId]
+            );
+
+            for (const log of logs) {
+                await client.query(
+                    `
+                    INSERT INTO patient_treatment_logs (
+                        patient_ref,
+                        log_date,
+                        therapy,
+                        reaction,
+                        notes
+                    )
+                    VALUES ($1, $2, $3, $4, $5)
+                    `,
+                    [
+                        refId,
+                        log.date || null,
+                        log.therapy || "",
+                        log.reaction || "",
+                        log.notes || ""
+                    ]
+                );
+            }
+        }
+
+        // Replace skincare only when supplied
+        if (skincare !== null) {
+            await client.query(
+                `
+                DELETE FROM patient_skincare
+                WHERE patient_ref = $1
+                `,
+                [refId]
+            );
+
+            for (const item of skincare) {
+                await client.query(
+                    `
+                    INSERT INTO patient_skincare (
+                        patient_ref,
+                        name,
+                        instructions,
+                        qty
+                    )
+                    VALUES ($1, $2, $3, $4)
+                    `,
+                    [
+                        refId,
+                        item.name || "",
+                        item.instructions || "",
+                        item.qty ?? 1
+                    ]
+                );
+            }
+        }
+
+               // Update concerns checklist only when supplied
+        if (concernsChecklist !== null) {
+            await client.query(
+                `
+                INSERT INTO patient_concerns (
+                    patient_ref,
+                    hyperpigmentation,
+                    acne,
+                    elasticity,
+                    dehydration
+                )
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (patient_ref)
+                DO UPDATE SET
+                    hyperpigmentation = EXCLUDED.hyperpigmentation,
+                    acne = EXCLUDED.acne,
+                    elasticity = EXCLUDED.elasticity,
+                    dehydration = EXCLUDED.dehydration
+                `,
+                [
+                    refId,
+                    !!concernsChecklist.hyperpigmentation,
+                    !!concernsChecklist.acne,
+                    !!concernsChecklist.elasticity,
+                    !!concernsChecklist.dehydration
+                ]
+            );
+        }
+
+
+
+        
+        let appointmentAction = null;
+        let previousAppointment = null;
+
+        // Process the appointment only when a date is supplied.
+        if (appointment !== null && appointment.date) {
+            // Serialize room-booking checks to reduce simultaneous conflicts.
+            await client.query(`
+                SELECT pg_advisory_xact_lock(
+                    hashtext('luna-appointment-room-booking')::bigint
+                )
+            `);
+
+            const newDate = String(appointment.date).slice(0, 10);
+            const newTime = String(appointment.time || '');
+            const newPurpose = String(
+                appointment.purpose || 'Consultation'
+            );
+
+            const requestedDuration = Number(
+                appointment.duration ??
+                appointment.duration_minutes ??
+                60
+            );
+
+            const allowedDurations = [30, 45, 60, 90];
+
+            const newDuration = allowedDurations.includes(requestedDuration)
+                ? requestedDuration
+                : 60;
+
+            // Convert times such as "10:00 AM" to minutes after midnight.
+            const parseTimeToMinutes = (value) => {
+                const match = String(value || '').trim().match(
+                    /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i
+                );
+
+                if (!match) return null;
+
+                let hours = Number(match[1]);
+                const minutes = Number(match[2]);
+                const period = match[3].toUpperCase();
+
+                if (
+                    hours < 1 || hours > 12 ||
+                    minutes < 0 || minutes > 59
+                ) {
+                    return null;
+                }
+
+                if (period === 'AM') {
+                    if (hours === 12) hours = 0;
+                } else if (hours !== 12) {
+                    hours += 12;
+                }
+
+                return hours * 60 + minutes;
+            };
+
+            const newStart = parseTimeToMinutes(newTime);
+
+            if (newStart === null) {
+                const error = new Error(
+                    'Please select a valid appointment time.'
+                );
+                error.code = 'INVALID_APPOINTMENT_TIME';
+                throw error;
+            }
+
+            const newEnd = newStart + newDuration;
+
+            // Clinic hours: 9 AM–1 PM and 2 PM–6 PM.
+            const morningStart = 9 * 60;
+            const lunchStart = 13 * 60;
+            const afternoonStart = 14 * 60;
+            const closingTime = 18 * 60;
+
+            const withinClinicHours =
+                newStart >= morningStart &&
+                newEnd <= closingTime &&
+                (
+                    newEnd <= lunchStart ||
+                    newStart >= afternoonStart
+                );
+
+            if (!withinClinicHours) {
+                const error = new Error(
+                    'This appointment duration falls outside clinic hours.'
+                );
+                error.code = 'INVALID_APPOINTMENT_TIME';
+                throw error;
+            }
+
+            // Find this patient's most recent appointment, if any.
+            const latestAppointmentResult = await client.query(
+                `
+                SELECT
+                    id,
+                    TO_CHAR(appointment_date, 'YYYY-MM-DD') AS appointment_date,
+                    appointment_time,
+                    purpose,
+                    room,
+                    duration_minutes
+                FROM appointments
+                WHERE patient_ref = $1
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+                `,
+                [refId]
+            );
+
+            if (latestAppointmentResult.rows.length > 0) {
+                previousAppointment = latestAppointmentResult.rows[0];
+            }
+
+            // Find other appointments on the requested date.
+            const conflictResult = await client.query(
+                `
+                SELECT
+                    id,
+                    appointment_time,
+                    room,
+                    duration_minutes
+                FROM appointments
+                WHERE appointment_date = $1::date
+                  AND ($2::bigint IS NULL OR id <> $2)
+                  AND LOWER(COALESCE(status, '')) NOT IN (
+                      'cancelled',
+                      'canceled',
+                      'rejected'
+                  )
+                `,
+                [
+                    newDate,
+                    previousAppointment
+                        ? previousAppointment.id
+                        : null
+                ]
+            );
+
+            const otherAppointments = conflictResult.rows;
+
+            const rooms = ['Room 1', 'Room 2', 'Room 3', 'Room 4'];
+            const requestedRoom = String(appointment.room || '').trim();
+
+            // Prefer this patient's current room when rescheduling.
+            if (!rooms.includes(requestedRoom)) {
+    const error = new Error('Please select a valid appointment room.');
+    error.code = 'INVALID_APPOINTMENT_ROOM';
+    throw error;
+}
+
+const hasConflict = otherAppointments.some(existing => {
+    const existingStart = parseTimeToMinutes(existing.appointment_time);
+
+    // Conservatively block the slot if a legacy time cannot be parsed.
+    if (existingStart === null) return true;
+
+    const existingDuration = Number(existing.duration_minutes) || 60;
+    const existingEnd = existingStart + existingDuration;
+
+    const overlaps = newStart < existingEnd && existingStart < newEnd;
+
+    // An overlapping appointment with no room blocks every room.
+    return overlaps && (
+        !existing.room || existing.room === requestedRoom
+    );
+});
+
+if (hasConflict) {
+    const error = new Error(
+        `${requestedRoom} is no longer available. Please select another room or time.`
+    );
+    error.code = 'ROOM_UNAVAILABLE';
+    throw error;
+}
+
+const assignedRoom = requestedRoom;
+
+            if (previousAppointment) {
+                const appointmentChanged =
+                    String(previousAppointment.appointment_date || '') !== newDate ||
+                    String(previousAppointment.appointment_time || '') !== newTime ||
+                    String(previousAppointment.purpose || 'Consultation') !== newPurpose ||
+                    Number(previousAppointment.duration_minutes || 60) !== newDuration ||
+                    String(previousAppointment.room || '') !== assignedRoom;
+
+                if (appointmentChanged) {
+                    await client.query(
+                        `
+                        UPDATE appointments
+                        SET
+                            appointment_date = $1,
+                            appointment_time = $2,
+                            purpose = $3,
+                            duration_minutes = $4,
+                            room = $5
+                        WHERE id = $6
+                        `,
+                        [
+                            newDate,
+                            newTime,
+                            newPurpose,
+                            newDuration,
+                            assignedRoom,
+                            previousAppointment.id
+                        ]
+                    );
+
+                    appointmentAction = 'Appointment Rescheduled';
+                }
+            } else {
+                await client.query(
+                    `
+                    INSERT INTO appointments (
+                        patient_ref,
+                        appointment_date,
+                        appointment_time,
+                        purpose,
+                        duration_minutes,
+                        room
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    `,
+                    [
+                        refId,
+                        newDate,
+                        newTime,
+                        newPurpose,
+                        newDuration,
+                        assignedRoom
+                    ]
+                );
+
+                appointmentAction = 'New Appointment';
+            }
+
+            // Return booking details to the existing frontend save handler.
+            appointment.room = assignedRoom;
+            appointment.duration = newDuration;
+        }
+
+
+        await client.query('COMMIT');
+
+        console.log(
+            `[Performance] Patient save and transaction: ${
+                Date.now() - routeStartedAt
+            } ms`
+        );
+
+
+
+
+const notificationStartedAt = Date.now();
+
+let emailResult = null;
+
+// Send exactly one email after a successful appointment save.
+if (appointmentAction && appointment) {
+    emailResult = await sendAppointmentEmail({
+        to: [process.env.SMTP_USER, email].filter(Boolean),
+        subject: `${appointmentAction} - ${name}`,
+        patientName: name,
+        patientPhone: contact,
+        patientEmail: email,
+        date: String(appointment.date || '').slice(0, 10),
+        time: appointment.time || 'Not specified',
+        purpose: appointment.purpose || 'Consultation',
+        message:
+            appointmentAction === 'Appointment Rescheduled' &&
+            previousAppointment
+                ? `Previous appointment: ${
+                    previousAppointment.appointment_date
+                } at ${
+                    previousAppointment.appointment_time || 'Not specified'
+                } (${previousAppointment.purpose || 'Consultation'})`
+                : '',
+        action: appointmentAction
+    });
+
+    console.log(
+        `Appointment email result for ${name}:`,
+        emailResult
+    );
+}
+
+console.log(
+    `[Performance] Email notification: ${
+        Date.now() - notificationStartedAt
+    } ms`
+);
+
+        const proceduresResult = await pool.query(
+            `
+            SELECT name, procedure_date, clinic
+            FROM patient_procedures
+            WHERE patient_ref = $1
+            ORDER BY procedure_date ASC, id ASC
+            `,
+            [refId]
+        );
+
+        const logsResult = await pool.query(
+            `
+            SELECT log_date, therapy, reaction, notes
+            FROM patient_treatment_logs
+            WHERE patient_ref = $1
+            ORDER BY log_date ASC, id ASC
+            `,
+            [refId]
+        );
+
+        const skincareResult = await pool.query(
+            `
+            SELECT name, instructions, qty
+            FROM patient_skincare
+            WHERE patient_ref = $1
+            ORDER BY id ASC
+            `,
+            [refId]
+        );
+
+        const concernsResult = await pool.query(
+            `
+            SELECT
+                hyperpigmentation,
+                acne,
+                elasticity,
+                dehydration
+            FROM patient_concerns
+            WHERE patient_ref = $1
+            `,
+            [refId]
+        );
+        
+const appointmentResult = await pool.query(
+    `
+    SELECT
+        TO_CHAR(appointment_date, 'YYYY-MM-DD') AS appointment_date,
+        appointment_time,
+        purpose,
+        room,
+        duration_minutes
+    FROM appointments
+    WHERE patient_ref = $1
+    ORDER BY created_at DESC, id DESC
+    LIMIT 1
+    `,
+    [refId]
+);
+
+
+        const patientResult = await pool.query(
+            `
+            SELECT *
+            FROM patients
+            WHERE ref_id = $1
+            `,
+            [refId]
+        );
+
+        const patient = patientResult.rows[0];
+        const concerns = concernsResult.rows[0];
+
+        const patientRecord = {
+            refId: patient.ref_id,
+            name: patient.name,
+            age: patient.age,
+            gender: patient.gender,
+            contact: patient.contact,
+            email: patient.email,
+            allergies: patient.allergies || "",
+            medications: patient.medications || "",
+            skintype: patient.skintype || "Normal",
+            concern: patient.concern || "",
+            routine: patient.routine || "",
+            observations: patient.observations || "",
+            protocol: patient.protocol || "",
+            status: patient.status || "Active",
+            signed: patient.signed || false,
+            signatureId: patient.signature_id || "",
+            beforeDate: patient.before_date || "",
+            afterDate: patient.after_date || "",
+            beforeImg: patient.before_img || "",
+            afterImg: patient.after_img || "",
+
+            procedures: proceduresResult.rows.map(row => ({
+                name: row.name || "",
+                date: row.procedure_date
+                    ? row.procedure_date.toISOString().split('T')[0]
+                    : "",
+                clinic: row.clinic || ""
+            })),
+
+            logs: logsResult.rows.map(row => ({
+                date: row.log_date
+                    ? row.log_date.toISOString().split('T')[0]
+                    : "",
+                therapy: row.therapy || "",
+                reaction: row.reaction || "",
+                notes: row.notes || ""
+            })),
+
+            skincare: skincareResult.rows.map(row => ({
+                name: row.name || "",
+                instructions: row.instructions || "",
+                qty: row.qty ?? 1
+            })),
+
+            concernsChecklist: concerns
+                ? {
+                    hyperpigmentation: concerns.hyperpigmentation || false,
+                    acne: concerns.acne || false,
+                    elasticity: concerns.elasticity || false,
+                    dehydration: concerns.dehydration || false
+                }
+                : {
+                    hyperpigmentation: false,
+                    acne: false,
+                    elasticity: false,
+                    dehydration: false
+                },
+
+            
+appointment: appointmentResult.rows[0]
+    ? {
+        date: appointmentResult.rows[0].appointment_date || "",
+        time: appointmentResult.rows[0].appointment_time || "",
+        purpose: appointmentResult.rows[0].purpose || "",
+        room: appointmentResult.rows[0].room || "",
+        duration: appointmentResult.rows[0].duration_minutes || 60
+    }
+    : null,
+
+assignedDoctor: patient.assigned_doctor || ""
+
+        };
+        console.log(
+    `[Performance] Total before response: ${Date.now() - routeStartedAt} ms`
+);
+
+        return res.json(patientRecord);
+
+    } 
+     catch (error) {
+        try {
+            await client.query('ROLLBACK');
+        } catch (rollbackError) {
+            console.error(
+                '❌ Rollback error:',
+                rollbackError.message
+            );
+        }
+
+        console.error('❌ Error updating patient:', error);
+        if (error.code === 'INVALID_APPOINTMENT_ROOM') {
+    return res.status(400).json({
+        error: error.message
+    });
+}
+
+        if (error.code === 'ROOM_UNAVAILABLE') {
+            return res.status(409).json({
+                error: error.message
+            });
+        }
+
+        if (error.code === 'INVALID_APPOINTMENT_TIME') {
+            return res.status(400).json({
+                error: error.message
+            });
+        }
+
+        if (error.code === '23505') {
+            return res.status(409).json({
+                error: "A patient with these details already exists."
+            });
+        }
+
+        return res.status(500).json({
+            error: "Unable to update patient."
+        });
+
+    } finally {
+        client.release();
+    }
+});
+
+
+// app.delete('/api/patients/:refId', (req, res) => {
+//     let patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
+//     const rawRef = req.params.refId || '';
+//     let refId = rawRef.trim().toLowerCase();
+//     try { refId = decodeURIComponent(rawRef).trim().toLowerCase(); } catch (e) {}
+
+//     const index = patientsList.findIndex(p => p.refId && p.refId.trim().toLowerCase() === refId);
+
+//     let deletedPatient = null;
+//     if (index !== -1) {
+//         deletedPatient = patientsList.splice(index, 1)[0];
+//     } else {
+//         const altIndex = patientsList.findIndex(p => p.name && p.name.trim().toLowerCase() === refId);
+//         if (altIndex !== -1) {
+//             deletedPatient = patientsList.splice(altIndex, 1)[0];
+//         }
+//     }
+
+//     if (deletedPatient) {
+//         writeDataFile(PATIENTS_FILE, patientsList);
+//         const usersList = readDataFile(USERS_FILE, INITIAL_USERS);
+//         const userIndex = usersList.findIndex(u =>
+//             (u.patientRef && u.patientRef.trim().toLowerCase() === refId) ||
+//             (deletedPatient.email && u.email && u.email.toLowerCase() === deletedPatient.email.toLowerCase() && u.role === 'patient')
+//         );
+//         if (userIndex !== -1) {
+//             usersList.splice(userIndex, 1);
+//             writeDataFile(USERS_FILE, usersList);
+//         }
+//     }
+
+//     res.json({ message: "Patient record deleted successfully.", refId: rawRef });
+// });
+
+
+app.delete('/api/patients/:refId', async (req, res) => {
+    const rawRef = req.params.refId || '';
+    let refId = rawRef.trim();
+
+    try {
+        refId = decodeURIComponent(rawRef).trim();
+    } catch (e) {
+        // Keep the original trimmed refId if decoding fails.
     }
 
-    res.json({ message: "Patient record deleted successfully.", refId: rawRef });
+    if (!refId) {
+        return res.status(400).json({
+            error: "Patient reference is required."
+        });
+    }
+
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // Confirm the patient exists in PostgreSQL.
+        const patientResult = await client.query(
+            `
+            SELECT ref_id, name, email
+            FROM patients
+            WHERE LOWER(ref_id) = LOWER($1)
+            LIMIT 1
+            `,
+            [refId]
+        );
+
+        if (patientResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+
+            return res.status(404).json({
+                error: "Patient not found.",
+                refId
+            });
+        }
+
+        const patient = patientResult.rows[0];
+        const patientRef = patient.ref_id;
+
+        // Delete related records first.
+        await client.query(
+            `DELETE FROM patient_procedures WHERE patient_ref = $1`,
+            [patientRef]
+        );
+
+        await client.query(
+            `DELETE FROM patient_treatment_logs WHERE patient_ref = $1`,
+            [patientRef]
+        );
+
+        await client.query(
+            `DELETE FROM patient_skincare WHERE patient_ref = $1`,
+            [patientRef]
+        );
+
+        await client.query(
+            `DELETE FROM patient_concerns WHERE patient_ref = $1`,
+            [patientRef]
+        );
+
+        await client.query(
+            `DELETE FROM appointments WHERE patient_ref = $1`,
+            [patientRef]
+        );
+
+
+        // Delete the patient login account.
+await client.query(
+    `
+    DELETE FROM users
+    WHERE LOWER(role) = 'patient'
+      AND (
+          LOWER(patient_ref) = LOWER($1)
+          OR (
+              $2::text IS NOT NULL
+              AND LOWER(email) = LOWER($2::text)
+          )
+      )
+    `,
+    [patientRef, patient.email || null]
+);
+
+        // Finally delete the patient itself.
+        await client.query(
+            `DELETE FROM patients WHERE ref_id = $1`,
+            [patientRef]
+        );
+
+        await client.query('COMMIT');
+
+        console.log(
+            `🗑️ Patient permanently deleted from PostgreSQL: ${patient.name} (${patientRef})`
+        );
+
+        return res.json({
+            message: "Patient record deleted successfully.",
+            refId: patientRef
+        });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+
+        console.error('❌ Failed to delete patient:', error);
+
+        return res.status(500).json({
+            error: "Unable to delete patient record."
+        });
+
+    } finally {
+        client.release();
+    }
 });
+
 
 // Patient self-service appointment booking (Patient Portal)
 app.put('/api/patients/:refId/appointment', async (req, res) => {
-    const patientsList = readDataFile(PATIENTS_FILE, INITIAL_PATIENTS);
-    const refId = req.params.refId;
-    const index = patientsList.findIndex(p => p.refId === refId);
-
-    if (index === -1) {
-        return res.status(404).json({ error: "Patient record not found." });
-    }
-
+    const { refId } = req.params;
     const { date, time, purpose } = req.body;
-    patientsList[index].appointment = req.body;
-    writeDataFile(PATIENTS_FILE, patientsList);
 
-    const patientName = patientsList[index].name;
-    const patientEmail = patientsList[index].email;
-    const settings = readDataFile(SETTINGS_FILE, INITIAL_SETTINGS);
-    const clinicEmail = settings.email || 'lunaskinaesthetics24@gmail.com';
-
-    // Simulate SMS notification
-    console.log(`\n================================================================================`);
-    console.log(`📱 [SMS NOTIFICATION SENT]`);
-    console.log(`   To: Luna Skin Clinic (+91 90256 76090)`);
-    console.log(`   Message: "New appointment request by patient ${patientName} on ${date} at ${time} for ${purpose}."`);
-    console.log(`================================================================================\n`);
-
-    addNotification(`New appointment booked by ${patientName} on ${date} at ${time} (${purpose})`, 'appointment');
-    addNotification(`SMS alert sent to Clinic at +91 90256 76090`, 'sms');
-    addNotification(`Email & Calendar update sent to ${clinicEmail}`, 'email');
-
-    // Send Real Email Notification to Clinic
-    const clinicNotificationHtml = `
-      <div style="font-family:'DM Sans',Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#FAF8F5;border-radius:12px;color:#2C3437;">
-        <h2 style="font-family:'Playfair Display',Georgia,serif;color:#5F7D6E;margin-top:0;">✉️ Patient Appointment Booked</h2>
-        <p>A patient has scheduled an appointment via the Patient Portal.</p>
-        <div style="background:#FFFFFF;padding:20px;border-radius:8px;border-left:4px solid #5F7D6E;margin:20px 0;">
-          <p style="margin:6px 0;"><strong>Patient:</strong> ${patientName} (${refId})</p>
-          <p style="margin:6px 0;"><strong>Date:</strong> ${date}</p>
-          <p style="margin:6px 0;"><strong>Time:</strong> ${time || 'TBD'}</p>
-          <p style="margin:6px 0;"><strong>Therapy Purpose:</strong> ${purpose || 'Consultation'}</p>
-        </div>
-      </div>
-    `;
-
-    const emailResult = await sendEmailNotification({
-        to: clinicEmail,
-        subject: `Appointment Scheduled: ${patientName} - ${date}`,
-        text: `New patient appointment scheduled by ${patientName} on ${date} at ${time} for ${purpose}`,
-        html: clinicNotificationHtml
-    });
-
-    if (patientEmail && patientEmail.includes('@')) {
-        const patientConfirmationHtml = `
-          <div style="font-family:'DM Sans',Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#FAF8F5;border-radius:12px;color:#2C3437;">
-            <h2 style="font-family:'Playfair Display',Georgia,serif;color:#5F7D6E;margin-top:0;">🌙 Appointment Confirmation</h2>
-            <p>Dear <strong>${patientName}</strong>,</p>
-            <p>Your appointment at <strong>Luna Skin Aesthetics</strong> has been confirmed.</p>
-            <div style="background:#FFFFFF;padding:20px;border-radius:8px;border-left:4px solid #5F7D6E;margin:20px 0;">
-              <p style="margin:6px 0;"><strong>Date:</strong> ${date}</p>
-              <p style="margin:6px 0;"><strong>Time:</strong> ${time || 'TBD'}</p>
-              <p style="margin:6px 0;"><strong>Therapy:</strong> ${purpose || 'Consultation'}</p>
-              <p style="margin:6px 0;"><strong>Location:</strong> 200K/5, Seyad plaza, Tiruchendur main road, Palayamkottai, Tirunelveli, Tamil Nadu 627002</p>
-            </div>
-            <p style="font-size:12px;color:#788489;">We look forward to welcoming you to our studio!</p>
-          </div>
-        `;
-        sendEmailNotification({
-            to: patientEmail,
-            subject: `Appointment Confirmed - Luna Skin Aesthetics (${date})`,
-            text: `Dear ${patientName}, your appointment for ${purpose} on ${date} at ${time} is confirmed.`,
-            html: patientConfirmationHtml
-        }).catch(err => console.error('Patient email dispatch error:', err));
+    if (!date || !time || !purpose) {
+        return res.status(400).json({
+            error: "Date, time and purpose are required."
+        });
     }
 
-    res.json({
-        ...patientsList[index],
-        emailSent: emailResult.sent,
-        emailReason: emailResult.reason || emailResult.error || null
-    });
+    try {
+        // Verify that the patient exists in PostgreSQL
+        const patientResult = await pool.query(
+            `
+            SELECT
+                ref_id,
+                name,
+                age,
+                gender,
+                contact,
+                email,
+                allergies,
+                medications,
+                skintype,
+                concern,
+                routine,
+                observations,
+                protocol,
+                status,
+                signed,
+                signature_id,
+                before_date,
+                after_date,
+                before_img,
+                after_img,
+                assigned_doctor
+            FROM patients
+            WHERE ref_id = $1
+            LIMIT 1
+            `,
+            [refId]
+        );
+
+        if (patientResult.rows.length === 0) {
+            return res.status(404).json({
+                error: "Patient record not found."
+            });
+        }
+
+        const patient = patientResult.rows[0];
+
+        const existingAppointmentResult = await pool.query(
+            `
+            SELECT
+                id,
+                TO_CHAR(appointment_date, 'YYYY-MM-DD') AS appointment_date,
+                appointment_time,
+                purpose
+            FROM appointments
+            WHERE patient_ref = $1
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            `,
+            [refId]
+        );
+
+        let appointmentAction = 'New Appointment';
+
+        if (existingAppointmentResult.rows.length > 0) {
+            const previousAppointment =
+                existingAppointmentResult.rows[0];
+
+            appointmentAction = 'Appointment Rescheduled';
+
+            await pool.query(
+                `
+                UPDATE appointments
+                SET
+                    appointment_date = $1,
+                    appointment_time = $2,
+                    purpose = $3
+                WHERE id = $4
+                `,
+                [
+                    date,
+                    time,
+                    purpose,
+                    previousAppointment.id
+                ]
+            );
+
+            console.log(
+                `📅 [APPOINTMENT RESCHEDULED] ${patient.name} → ${date} ${time}`
+            );
+
+    
+await sendAppointmentEmail({
+    to: [process.env.SMTP_USER, patient.email].filter(Boolean),
+    subject: `Appointment Rescheduled - ${patient.name}`,
+    patientName: patient.name,
+    patientPhone: patient.contact,
+    patientEmail: patient.email,
+    date,
+    time,
+    purpose,
+    message:
+        `Previous appointment: ${previousAppointment.appointment_date} at ${previousAppointment.appointment_time || 'Not specified'}`
+        + ` (${previousAppointment.purpose || 'Consultation'})`,
+    action: appointmentAction
+});
+
+
+        } else {
+            await pool.query(
+                `
+                INSERT INTO appointments (
+                    patient_ref,
+                    appointment_date,
+                    appointment_time,
+                    purpose
+                )
+                VALUES ($1, $2, $3, $4)
+                `,
+                [refId, date, time, purpose]
+            );
+
+            console.log(
+                `📅 [APPOINTMENT CREATED] ${patient.name} → ${date} ${time}`
+            );
+
+            await sendAppointmentEmail({
+                to: process.env.SMTP_USER,
+                subject: `New Appointment - ${patient.name}`,
+                patientName: patient.name,
+                patientPhone: patient.contact,
+                patientEmail: patient.email,
+                date,
+                time,
+                purpose,
+                action: appointmentAction
+            });
+        }
+
+        console.log(`\n================================================================================`);
+        console.log(`📅 [APPOINTMENT BOOKED]`);
+        console.log(`   Patient: ${patient.name}`);
+        console.log(`   Ref ID: ${refId}`);
+        console.log(`   Date: ${date}`);
+        console.log(`   Time: ${time}`);
+        console.log(`   Purpose: ${purpose}`);
+        console.log(`================================================================================\n`);
+
+        // Keep the existing notification behavior for now
+        addNotification(
+            `New appointment booked by ${patient.name} on ${date} at ${time} (${purpose})`,
+            'appointment'
+        );
+
+        addNotification(
+            `SMS alert sent to Clinic at +91 90256 76090`,
+            'sms'
+        );
+
+        addNotification(
+            `Email & Calendar update sent to lunaskinaesthetics24@gmail.com`,
+            'email'
+        );
+
+        // Return the patient in the format expected by the frontend
+        res.json({
+            refId: patient.ref_id,
+            name: patient.name,
+            age: patient.age,
+            gender: patient.gender,
+            contact: patient.contact,
+            email: patient.email,
+            allergies: patient.allergies || "",
+            medications: patient.medications || "",
+            skintype: patient.skintype || "Normal",
+            concern: patient.concern || "",
+            routine: patient.routine || "",
+            observations: patient.observations || "",
+            protocol: patient.protocol || "",
+            status: patient.status || "Active",
+            signed: patient.signed || false,
+            signatureId: patient.signature_id || "",
+            beforeDate: patient.before_date || "",
+            afterDate: patient.after_date || "",
+            beforeImg: patient.before_img || "",
+            afterImg: patient.after_img || "",
+            procedures: [],
+            logs: [],
+            skincare: [],
+            concernsChecklist: {
+                hyperpigmentation: false,
+                acne: false,
+                elasticity: false,
+                dehydration: false
+            },
+            appointment: {
+                date,
+                time,
+                purpose
+            },
+            assignedDoctor: patient.assigned_doctor || ""
+        });
+
+    } catch (error) {
+        console.error('❌ Appointment booking error:', error);
+
+        return res.status(500).json({
+            error: "Unable to book appointment."
+        });
+    }
 });
 
 // POST /api/appointments/request — Public landing page booking request
+// app.post('/api/appointments/request', (req, res) => {
+//     const { name, phone, email, service, date, message } = req.body;
+
+//     if (!name || !phone) {
+//         return res.status(400).json({ error: "Name and phone number are required." });
+//     }
+
+//     const bookingDate = date || new Date().toISOString().slice(0, 10);
+//     const purpose = service || "Initial Consultation";
+
+//     console.log(`\n================================================================================`);
+//     console.log(`📅 [PUBLIC APPOINTMENT REQUEST RECEIVED]`);
+//     console.log(`   Patient Name: ${name}`);
+//     console.log(`   Phone: ${phone}`);
+//     console.log(`   Email: ${email || 'N/A'}`);
+//     console.log(`   Service Requested: ${purpose}`);
+//     console.log(`   Preferred Date: ${bookingDate}`);
+//     console.log(`   Message: ${message || 'None'}`);
+//     console.log(`   Target Email: lunaskinaesthetics24@gmail.com`);
+//     console.log(`   Target SMS: +91 90256 76090`);
+//     console.log(`================================================================================\n`);
+
+//     addNotification(`Public booking request from ${name} (${phone}) for ${purpose} on ${bookingDate}`, 'appointment');
+//     addNotification(`Email notification dispatched to lunaskinaesthetics24@gmail.com`, 'email');
+
+//     res.status(201).json({
+//         success: true,
+//         message: `Appointment request submitted! Clinic notified at lunaskinaesthetics24@gmail.com and 9025676090.`,
+//         booking: { name, phone, email, service: purpose, date: bookingDate, message }
+//     });
+// });
+// POST /api/appointments/request — Public landing page booking request
+// POST /api/appointments/request — Public landing page booking request
+
 app.post('/api/appointments/request', async (req, res) => {
-    const { name, phone, email, service, date, message } = req.body;
+    const {
+        name,
+        phone,
+        email,
+        service,
+        date,
+        message
+    } = req.body;
 
     if (!name || !phone) {
-        return res.status(400).json({ error: "Name and phone number are required." });
+        return res.status(400).json({
+            error: "Name and phone number are required."
+        });
     }
 
-    const bookingDate = date || new Date().toISOString().slice(0, 10);
-    const purpose = service || "Initial Consultation";
-    const settings = readDataFile(SETTINGS_FILE, INITIAL_SETTINGS);
-    const clinicEmail = settings.email || 'lunaskinaesthetics24@gmail.com';
+    const bookingDate =
+        date || new Date().toISOString().slice(0, 10);
 
-    addNotification(`Public booking request from ${name} (${phone}) for ${purpose} on ${bookingDate}`, 'appointment');
-    addNotification(`Email notification dispatched to ${clinicEmail}`, 'email');
+    const purpose =
+        service || "Initial Consultation";
 
-    // Send HTML Email to Clinic
-    const clinicEmailHtml = `
-      <div style="font-family:'DM Sans',Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#FAF8F5;border-radius:12px;color:#2C3437;">
-        <h2 style="font-family:'Playfair Display',Georgia,serif;color:#5F7D6E;margin-top:0;">🌙 New Public Appointment Request</h2>
-        <p>A new appointment request has been submitted from the <strong>Luna Skin Aesthetics</strong> website landing page.</p>
-        <div style="background:#FFFFFF;padding:20px;border-radius:8px;border-left:4px solid #5F7D6E;margin:20px 0;">
-          <p style="margin:6px 0;"><strong>Patient Name:</strong> ${name}</p>
-          <p style="margin:6px 0;"><strong>Phone Number:</strong> ${phone}</p>
-          <p style="margin:6px 0;"><strong>Email:</strong> ${email || 'Not provided'}</p>
-          <p style="margin:6px 0;"><strong>Service Requested:</strong> ${purpose}</p>
-          <p style="margin:6px 0;"><strong>Preferred Date:</strong> ${bookingDate}</p>
-          <p style="margin:6px 0;"><strong>Message:</strong> ${message || 'None'}</p>
-        </div>
-        <p style="font-size:12px;color:#788489;">Please log into the Specialist Portal to manage this appointment.</p>
-      </div>
-    `;
+    try {
+        // Save public booking to PostgreSQL.
+        const appointmentResult = await pool.query(
+            `
+            INSERT INTO appointments (
+                name,
+                phone,
+                email,
+                service,
+                appointment_date,
+                appointment_time,
+                purpose,
+                message,
+                status
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING
+                id,
+                name,
+                phone,
+                email,
+                service,
+                appointment_date,
+                appointment_time,
+                purpose,
+                message,
+                status
+            `,
+            [
+                name.trim(),
+                phone.trim(),
+                email ? email.trim() : null,
+                service || null,
+                bookingDate,
+                null,
+                purpose,
+                message ? message.trim() : null,
+                'Pending'
+            ]
+        );
 
-    const emailResult = await sendEmailNotification({
-        to: clinicEmail,
-        subject: `New Booking Request from ${name} - Luna Skin Aesthetics`,
-        text: `New Booking Request from ${name} (${phone}) for ${purpose} on ${bookingDate}. Message: ${message || 'None'}`,
-        html: clinicEmailHtml
-    });
+        const appointment = appointmentResult.rows[0];
 
-    // Confirmation Email to Client if email provided
-    if (email && email.includes('@')) {
-        const clientEmailHtml = `
-          <div style="font-family:'DM Sans',Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#FAF8F5;border-radius:12px;color:#2C3437;">
-            <h2 style="font-family:'Playfair Display',Georgia,serif;color:#5F7D6E;margin-top:0;">🌙 Appointment Request Received</h2>
-            <p>Dear <strong>${name}</strong>,</p>
-            <p>Thank you for reaching out to <strong>Luna Skin Aesthetics</strong>. We have received your request for a <strong>${purpose}</strong> consultation on <strong>${bookingDate}</strong>.</p>
-            <p>Our aesthetic team will review your inquiry within 24 hours and contact you at <strong>${phone}</strong> to confirm your appointment slot.</p>
-            <div style="background:#FFFFFF;padding:16px;border-radius:8px;margin:20px 0;border:1px solid #E2DCD5;">
-              <p style="margin:4px 0;font-size:14px;"><strong>Clinic Location:</strong> 200K/5, Seyad plaza, Tiruchendur main road, Palayamkottai, Tirunelveli, Tamil Nadu 627002</p>
-              <p style="margin:4px 0;font-size:14px;"><strong>Clinic Phone:</strong> +91 90256 76090</p>
-            </div>
-            <p style="font-size:12px;color:#788489;">Warm regards,<br/>Dr. Krithika SK & The Luna Skin Team</p>
-          </div>
-        `;
-        sendEmailNotification({
-            to: email,
-            subject: `We've Received Your Appointment Request - Luna Skin Aesthetics`,
-            text: `Dear ${name}, thank you for requesting an appointment for ${purpose} on ${bookingDate}. We will contact you at ${phone} to confirm your appointment.`,
-            html: clientEmailHtml
-        }).catch(err => console.error('Client email dispatch error:', err));
+        console.log(
+            `📅 [PUBLIC APPOINTMENT SAVED] ${name} → ${bookingDate}`
+        );
+
+        // Send appointment request email to the clinic/doctor.
+        const emailResult = await sendAppointmentEmail({
+            to: process.env.SMTP_USER,
+            subject: `New Appointment Request - ${name}`,
+            patientName: name,
+            patientPhone: phone,
+            patientEmail: email,
+            date: bookingDate,
+            time: 'To be confirmed',
+            purpose,
+            message,
+            action: 'New Appointment Request'
+        });
+
+        // Keep the existing internal notification.
+        addNotification(
+            `New public booking from ${name} (${phone}) for ${purpose} on ${bookingDate}`,
+            'appointment'
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Appointment request submitted successfully.",
+            emailSent: emailResult.sent,
+            booking: {
+                id: appointment.id,
+                name: appointment.name,
+                phone: appointment.phone,
+                email: appointment.email,
+                service: appointment.service,
+                date: bookingDate,
+                time: appointment.appointment_time || "To be confirmed",
+                purpose: appointment.purpose,
+                message: appointment.message,
+                status: appointment.status
+            }
+        });
+
+    } catch (error) {
+        console.error(
+            '❌ Failed to process public appointment request:',
+            error
+        );
+
+        return res.status(500).json({
+            error: "Unable to submit appointment request."
+        });
     }
-
-    res.status(201).json({
-        success: true,
-        message: `Appointment request submitted! Clinic notified at ${clinicEmail} and ${phone}.`,
-        emailSent: emailResult.sent,
-        emailReason: emailResult.reason || emailResult.error || null,
-        booking: { name, phone, email, service: purpose, date: bookingDate, message }
-    });
 });
-
-// POST /api/settings/test-email — Test SMTP configuration
-app.post('/api/settings/test-email', async (req, res) => {
-    const { targetEmail } = req.body;
-    const settings = readDataFile(SETTINGS_FILE, INITIAL_SETTINGS);
-    const recipient = targetEmail || settings.email || 'lunaskinaesthetics24@gmail.com';
-
-    const testHtml = `
-      <div style="font-family:'DM Sans',Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#FAF8F5;border-radius:12px;color:#2C3437;">
-        <h2 style="font-family:'Playfair Display',Georgia,serif;color:#5F7D6E;margin-top:0;">✅ SMTP Email Configuration Test Successful</h2>
-        <p>This is a verification email sent from your <strong>Luna Skin Aesthetics</strong> platform.</p>
-        <div style="background:#FFFFFF;padding:16px;border-radius:8px;border-left:4px solid #5F7D6E;margin:20px 0;">
-          <p style="margin:4px 0;"><strong>SMTP Host:</strong> ${process.env.SMTP_HOST || settings.smtpHost || 'smtp.gmail.com'}</p>
-          <p style="margin:4px 0;"><strong>SMTP Port:</strong> ${process.env.SMTP_PORT || settings.smtpPort || '465'}</p>
-          <p style="margin:4px 0;"><strong>SMTP User:</strong> ${process.env.SMTP_USER || settings.smtpUser || settings.email}</p>
-          <p style="margin:4px 0;"><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
-        </div>
-        <p style="font-size:12px;color:#788489;">Your email delivery service is correctly configured!</p>
-      </div>
-    `;
-
-    const result = await sendEmailNotification({
-        to: recipient,
-        subject: `SMTP Test Email - Luna Skin Aesthetics (${new Date().toLocaleTimeString()})`,
-        text: `SMTP Email configuration test succeeded! Sent to ${recipient} at ${new Date().toLocaleString()}`,
-        html: testHtml
-    });
-
-    if (result.sent) {
-        res.json({ success: true, message: `Test email sent successfully to ${recipient}!`, messageId: result.messageId });
-    } else {
-        res.status(400).json({ success: false, error: result.error || result.reason || 'Failed to send test email.' });
-    }
-});
-
 // Notifications routes
-app.get('/api/notifications', (req, res) => {
-    const notifs = readDataFile(NOTIFICATIONS_FILE, []);
-    res.json(notifs);
+app.get('/api/notifications', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                id,
+                type,
+                message,
+                timestamp,
+                read
+            FROM notifications
+            ORDER BY timestamp DESC
+            LIMIT 50
+        `);
+
+        const notifications = result.rows.map(row => ({
+            id: row.id,
+            type: row.type,
+            message: row.message,
+            time: row.timestamp,
+            read: row.read
+        }));
+
+        res.json(notifications);
+
+    } catch (error) {
+        console.error("Notification fetch error:", error);
+
+        res.status(500).json({
+            error: "Unable to fetch notifications"
+        });
+    }
 });
 
-app.post('/api/notifications/clear', (req, res) => {
-    const notifs = readDataFile(NOTIFICATIONS_FILE, []);
-    notifs.forEach(n => n.read = true);
-    writeDataFile(NOTIFICATIONS_FILE, notifs);
-    res.json({ success: true, count: notifs.length });
+// app.post('/api/notifications/clear', (req, res) => {
+//     const notifs = readDataFile(NOTIFICATIONS_FILE, []);
+//     notifs.forEach(n => n.read = true);
+//     writeDataFile(NOTIFICATIONS_FILE, notifs);
+//     res.json({ success: true, count: notifs.length });
+// });
+app.post('/api/notifications/clear', async (req, res) => {
+    try {
+        await pool.query(
+            `
+            UPDATE notifications
+            SET read = TRUE
+            `
+        );
+
+        res.json({
+            success:true
+        });
+
+    } catch(error) {
+        console.error(error);
+        res.status(500).json({
+            error:"Unable to clear notifications"
+        });
+    }
 });
 
 app.post('/api/patients/:refId/upload-image', (req, res) => {
@@ -993,20 +3364,13 @@ try {
     if (localUploads !== UPLOADS_DIR) app.use('/uploads', express.static(localUploads));
 } catch(e) {}
 
-// Serve static assets with dynamic disk reading for live updates
+// Serve pre-cached static assets
 Object.keys(fileCache).forEach(route => {
     const asset = fileCache[route];
     app.get(route, (req, res) => {
-        const filename = route.substring(1);
-        const freshText = readTextAsset(filename);
-        if (freshText) {
-            res.setHeader('Content-Type', asset.mime);
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            return res.send(freshText);
-        }
         if (asset.content) {
             res.setHeader('Content-Type', asset.mime);
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Cache-Control', 'public, max-age=3600');
             return res.send(asset.content);
         }
         res.status(404).send(`File not found: ${route}`);
@@ -1022,15 +3386,14 @@ app.get('*', (req, res) => {
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-
-    const freshHtml = readTextAsset('index.html');
-    if (freshHtml) {
-        return res.send(freshHtml);
-    }
 
     if (fileCache['/index.html'] && fileCache['/index.html'].content) {
         return res.send(fileCache['/index.html'].content);
+    }
+
+    const html = readTextAsset('index.html');
+    if (html) {
+        return res.send(html);
     }
 
     res.status(500).send(`Server Error: Cannot find index.html in serverless environment.`);
